@@ -1,11 +1,42 @@
 import React, { useState } from 'react';
-import { Mail, Download, Search, Calendar, ChevronDown, Filter, Trash2, AlertCircle, Eye, Upload, Send } from 'lucide-react';
+import { 
+  Mail, 
+  Download, 
+  Search, 
+  Calendar, 
+  ChevronDown, 
+  Filter, 
+  Trash2, 
+  AlertCircle, 
+  Eye, 
+  Upload, 
+  Send,
+  X,
+  FileText,
+  User,
+  Package,
+  CheckCircle,
+  Loader,
+  Plus,
+  ChevronUp
+} from 'lucide-react';
 import AdminLayout from '../../components/admin/AdminLayout';
 import { useProjects } from '../../context/ProjectContext';
 import { Order } from '../../types';
+import { uploadFile, deleteFile, validateFile, formatFileSize } from '../../utils/storage';
+import { sendDocumentDelivery } from '../../utils/email';
 
 const AdminOrdersPage = () => {
-  const { orders, updateOrderStatus, deleteOrder, getProjectDocuments, addProjectDocument, sendSecureProjectDocuments } = useProjects();
+  const { 
+    orders, 
+    updateOrderStatus, 
+    deleteOrder, 
+    getProjectDocuments, 
+    addProjectDocument, 
+    sendSecureProjectDocuments,
+    getDocumentsByReviewStage 
+  } = useProjects();
+  
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string | null>(null);
   const [selectedOrders, setSelectedOrders] = useState<string[]>([]);
@@ -15,10 +46,34 @@ const AdminOrdersPage = () => {
   const [showStatusDropdown, setShowStatusDropdown] = useState<string | null>(null);
   const [isUpdating, setIsUpdating] = useState(false);
   const [updateError, setUpdateError] = useState<string | null>(null);
+  
+  // Modal states
   const [showDetailsModal, setShowDetailsModal] = useState(false);
   const [showUploadModal, setShowUploadModal] = useState(false);
   const [showSendModal, setShowSendModal] = useState(false);
+  const [expandedReviewStage, setExpandedReviewStage] = useState<string | null>(null);
+  
+  // Upload modal state
+  const [isUploading, setIsUploading] = useState(false);
+  const [uploadError, setUploadError] = useState<string | null>(null);
+  const [uploadSuccess, setUploadSuccess] = useState<string | null>(null);
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [uploadFormData, setUploadFormData] = useState({
+    name: '',
+    url: '',
+    type: '',
+    size: 0,
+    review_stage: 'review_1' as 'review_1' | 'review_2' | 'review_3',
+    document_category: 'presentation' as 'presentation' | 'document' | 'report' | 'other',
+    description: '',
+    storage_path: ''
+  });
+
+  // Send email modal state
   const [isSending, setIsSending] = useState(false);
+  const [sendError, setSendError] = useState<string | null>(null);
+  const [sendSuccess, setSendSuccess] = useState<string | null>(null);
+  const [selectedReviewStages, setSelectedReviewStages] = useState<string[]>([]);
 
   // Format date helper function
   const formatDate = (dateString: string | undefined) => {
@@ -133,30 +188,205 @@ const AdminOrdersPage = () => {
   // Open details modal
   const openDetailsModal = (order: Order) => {
     setCurrentOrder(order);
+    setExpandedReviewStage(null);
     setShowDetailsModal(true);
   };
 
   // Open upload modal
   const openUploadModal = (order: Order) => {
     setCurrentOrder(order);
+    setUploadFormData({
+      name: '',
+      url: '',
+      type: '',
+      size: 0,
+      review_stage: 'review_1',
+      document_category: 'presentation',
+      description: '',
+      storage_path: ''
+    });
+    setUploadError(null);
+    setUploadSuccess(null);
+    setUploadProgress(0);
     setShowUploadModal(true);
   };
 
   // Open send modal
   const openSendModal = (order: Order) => {
     setCurrentOrder(order);
+    setSelectedReviewStages([]);
+    setSendError(null);
+    setSendSuccess(null);
     setShowSendModal(true);
   };
 
-  // Handle send documents
-  const handleSendDocuments = async (order: Order) => {
-    setIsSending(true);
+  // Toggle review stage expansion in details modal
+  const toggleReviewStage = (stage: string) => {
+    setExpandedReviewStage(expandedReviewStage === stage ? null : stage);
+  };
+
+  // Handle file upload
+  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file || !currentOrder) return;
+
+    // Validate file
+    const validation = validateFile(file);
+    if (!validation.valid) {
+      setUploadError(validation.error || 'Invalid file');
+      return;
+    }
+
+    setIsUploading(true);
+    setUploadError(null);
+    setUploadSuccess(null);
+    setUploadProgress(0);
+
     try {
-      await sendSecureProjectDocuments(order.id, order.customer_email || order.customerEmail, order.customer_name || order.customerName, true);
-      alert('Documents sent successfully!');
+      // Simulate upload progress
+      const progressInterval = setInterval(() => {
+        setUploadProgress(prev => {
+          if (prev >= 90) {
+            clearInterval(progressInterval);
+            return 90;
+          }
+          return prev + 10;
+        });
+      }, 200);
+
+      // Upload file to Supabase Storage
+      const uploadResult = await uploadFile(file, `${currentOrder.projectId}/${uploadFormData.review_stage}`);
+      
+      clearInterval(progressInterval);
+      setUploadProgress(100);
+      
+      setUploadFormData(prev => ({
+        ...prev,
+        name: file.name,
+        url: uploadResult.url,
+        type: file.type,
+        size: uploadResult.size,
+        storage_path: uploadResult.path
+      }));
+
+      setUploadSuccess('File uploaded successfully!');
+    } catch (error) {
+      setUploadError(error instanceof Error ? error.message : 'Failed to upload file. Please check your permissions and try again.');
+      console.error('File upload error:', error);
+    } finally {
+      setIsUploading(false);
+      setTimeout(() => {
+        setUploadProgress(0);
+        setUploadSuccess(null);
+      }, 3000);
+    }
+  };
+
+  // Handle document submission
+  const handleDocumentSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!uploadFormData.name || !uploadFormData.url || !currentOrder) {
+      setUploadError('Please provide a file name and URL');
+      return;
+    }
+
+    try {
+      await addProjectDocument({
+        project_id: currentOrder.projectId,
+        name: uploadFormData.name,
+        url: uploadFormData.url,
+        type: uploadFormData.type,
+        size: uploadFormData.size,
+        review_stage: uploadFormData.review_stage,
+        document_category: uploadFormData.document_category,
+        description: uploadFormData.description,
+        is_active: true
+      });
+
+      // Reset form
+      setUploadFormData({
+        name: '',
+        url: '',
+        type: '',
+        size: 0,
+        review_stage: 'review_1',
+        document_category: 'presentation',
+        description: '',
+        storage_path: ''
+      });
+      
+      setShowUploadModal(false);
+      setUploadError(null);
+      setUploadSuccess(null);
+    } catch (error) {
+      setUploadError('Failed to add document. Please check your permissions and try again.');
+      console.error('Error adding document:', error);
+    }
+  };
+
+  // Handle review stage selection for sending
+  const handleReviewStageToggle = (stage: string) => {
+    if (selectedReviewStages.includes(stage)) {
+      setSelectedReviewStages(selectedReviewStages.filter(s => s !== stage));
+    } else {
+      setSelectedReviewStages([...selectedReviewStages, stage]);
+    }
+  };
+
+  // Handle sending documents
+  const handleSendDocuments = async () => {
+    if (!currentOrder || selectedReviewStages.length === 0) {
+      setSendError('Please select at least one review stage');
+      return;
+    }
+
+    setIsSending(true);
+    setSendError(null);
+    setSendSuccess(null);
+
+    try {
+      // Get project documents for selected review stages
+      const allDocuments = getProjectDocuments(currentOrder.projectId);
+      const selectedDocuments = allDocuments.filter(doc => 
+        selectedReviewStages.includes(doc.review_stage) && doc.is_active
+      );
+
+      if (selectedDocuments.length === 0) {
+        throw new Error('No documents found for selected review stages');
+      }
+
+      // Format documents for email
+      const formattedDocuments = selectedDocuments.map(doc => ({
+        name: doc.name,
+        url: doc.url,
+        category: doc.document_category,
+        review_stage: doc.review_stage,
+        size: doc.size
+      }));
+
+      // Send document delivery email
+      await sendDocumentDelivery({
+        project_title: currentOrder.project_title || currentOrder.projectTitle,
+        customer_name: currentOrder.customer_name || currentOrder.customerName,
+        customer_email: currentOrder.customer_email || currentOrder.customerEmail,
+        order_id: currentOrder.id,
+        documents: formattedDocuments,
+        access_expires: 'Never (lifetime access)'
+      });
+
+      setSendSuccess('Documents sent successfully!');
+      
+      // Close modal after success
+      setTimeout(() => {
+        setShowSendModal(false);
+        setSendSuccess(null);
+        setSelectedReviewStages([]);
+      }, 2000);
+
     } catch (error) {
       console.error('Error sending documents:', error);
-      alert('Failed to send documents. Please try again.');
+      setSendError(error instanceof Error ? error.message : 'Failed to send documents. Please try again.');
     } finally {
       setIsSending(false);
     }
@@ -212,6 +442,19 @@ const AdminOrdersPage = () => {
 
   // Status options
   const statusOptions = ['pending', 'processing', 'completed', 'cancelled'];
+
+  const reviewStages = [
+    { value: 'review_1', label: 'Review 1', description: 'Initial project review and requirements' },
+    { value: 'review_2', label: 'Review 2', description: 'Mid-project review and progress assessment' },
+    { value: 'review_3', label: 'Review 3', description: 'Final review and project completion' }
+  ];
+
+  const documentCategories = [
+    { value: 'presentation', label: 'Presentation (PPT)', icon: FileText },
+    { value: 'document', label: 'Document (Word/PDF)', icon: FileText },
+    { value: 'report', label: 'Report', icon: FileText },
+    { value: 'other', label: 'Other', icon: FileText }
+  ];
 
   return (
     <AdminLayout>
@@ -391,17 +634,27 @@ const AdminOrdersPage = () => {
                           />
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="text-sm font-medium text-slate-900 dark:text-slate-200">{order.customer_name}</div>
-                          <div className="text-sm text-blue-600 dark:text-blue-400">
-                            <a href={`mailto:${order.customer_email}`} className="hover:underline">
-                              {order.customer_email}
-                            </a>
+                          <div className="flex items-center">
+                            <User className="h-8 w-8 text-slate-400 mr-3" />
+                            <div>
+                              <div className="text-sm font-medium text-slate-900 dark:text-slate-200">{order.customer_name}</div>
+                              <div className="text-sm text-blue-600 dark:text-blue-400">
+                                <a href={`mailto:${order.customer_email}`} className="hover:underline">
+                                  {order.customer_email}
+                                </a>
+                              </div>
+                            </div>
                           </div>
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="text-sm text-slate-900 dark:text-slate-200">{order.project_title}</div>
-                          <div className="text-sm text-slate-500 dark:text-slate-400">
-                            {documentsCount} documents available
+                        <td className="px-6 py-4">
+                          <div className="flex items-center">
+                            <Package className="h-6 w-6 text-slate-400 mr-2" />
+                            <div>
+                              <div className="text-sm font-medium text-slate-900 dark:text-slate-200">{order.project_title}</div>
+                              <div className="text-sm text-slate-500 dark:text-slate-400">
+                                {documentsCount} documents available
+                              </div>
+                            </div>
                           </div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
@@ -464,8 +717,7 @@ const AdminOrdersPage = () => {
                             
                             {documentsCount > 0 && (
                               <button
-                                onClick={() => handleSendDocuments(order)}
-                                disabled={isSending}
+                                onClick={() => openSendModal(order)}
                                 className="p-2 text-green-600 dark:text-green-400 hover:bg-green-100 dark:hover:bg-green-900 rounded-lg transition-colors"
                                 title="Send documents"
                               >
@@ -536,10 +788,10 @@ const AdminOrdersPage = () => {
         </div>
       )}
 
-      {/* Details Modal - Simplified version */}
+      {/* Details Modal with Document Status */}
       {showDetailsModal && currentOrder && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white dark:bg-slate-800 rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+          <div className="bg-white dark:bg-slate-800 rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
             <div className="p-6 border-b border-slate-200 dark:border-slate-700">
               <div className="flex items-center justify-between">
                 <h3 className="text-xl font-semibold text-slate-900 dark:text-slate-200">
@@ -549,30 +801,391 @@ const AdminOrdersPage = () => {
                   onClick={() => setShowDetailsModal(false)}
                   className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-300"
                 >
-                  ×
+                  <X className="h-6 w-6" />
                 </button>
               </div>
             </div>
 
             <div className="p-6">
-              <div className="space-y-4">
-                <div className="bg-slate-50 dark:bg-slate-700 p-4 rounded-lg">
-                  <h4 className="font-medium text-slate-900 dark:text-slate-200 mb-2">Order Information</h4>
+              {/* Order Information */}
+              <div className="mb-6">
+                <h4 className="text-lg font-medium text-slate-900 dark:text-slate-200 mb-3">Order Information</h4>
+                <div className="bg-slate-50 dark:bg-slate-700 p-4 rounded-lg space-y-2">
                   <p><strong>Order ID:</strong> {currentOrder.id}</p>
+                  <p><strong>Project:</strong> {currentOrder.project_title}</p>
                   <p><strong>Customer:</strong> {currentOrder.customer_name}</p>
                   <p><strong>Email:</strong> {currentOrder.customer_email}</p>
-                  <p><strong>Project:</strong> {currentOrder.project_title}</p>
                   <p><strong>Status:</strong> {currentOrder.status}</p>
-                  <p><strong>Date:</strong> {formatDate(currentOrder.created_at)}</p>
+                  <p><strong>Order Date:</strong> {formatDate(currentOrder.created_at)}</p>
                 </div>
               </div>
 
-              <div className="mt-6 flex justify-end">
+              {/* Document Status */}
+              <div className="mb-6">
+                <h4 className="text-lg font-medium text-slate-900 dark:text-slate-200 mb-4">Document Status</h4>
+                <div className="space-y-4">
+                  {reviewStages.map((stage) => {
+                    const documents = getDocumentsByReviewStage(currentOrder.projectId, stage.value);
+                    const isExpanded = expandedReviewStage === stage.value;
+                    
+                    return (
+                      <div key={stage.value} className="border border-slate-200 dark:border-slate-700 rounded-lg">
+                        <button
+                          onClick={() => toggleReviewStage(stage.value)}
+                          className="w-full px-4 py-3 flex items-center justify-between text-left hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors"
+                        >
+                          <div>
+                            <h3 className="font-medium text-slate-900 dark:text-slate-200 uppercase text-sm">
+                              {stage.label.replace(' ', ' ')}
+                            </h3>
+                            <p className="text-sm text-slate-500 dark:text-slate-400">
+                              {documents.length} docs
+                            </p>
+                          </div>
+                          {isExpanded ? (
+                            <ChevronUp className="h-5 w-5 text-slate-400" />
+                          ) : (
+                            <ChevronDown className="h-5 w-5 text-slate-400" />
+                          )}
+                        </button>
+                        
+                        {isExpanded && (
+                          <div className="px-4 pb-4 border-t border-slate-200 dark:border-slate-700">
+                            {documents.length === 0 ? (
+                              <div className="text-center py-6 text-slate-500 dark:text-slate-400">
+                                <FileText className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                                <p className="text-sm">No documents uploaded</p>
+                              </div>
+                            ) : (
+                              <div className="space-y-2 mt-3">
+                                {documents.map((doc) => (
+                                  <div
+                                    key={doc.id}
+                                    className="flex items-center justify-between p-3 bg-slate-50 dark:bg-slate-700 rounded-lg"
+                                  >
+                                    <div className="flex items-center space-x-3">
+                                      <FileText className="h-6 w-6 text-blue-600 dark:text-blue-400" />
+                                      <div>
+                                        <h4 className="font-medium text-slate-900 dark:text-slate-200">
+                                          {doc.name}
+                                        </h4>
+                                        <div className="flex items-center space-x-2 text-sm text-slate-500 dark:text-slate-400">
+                                          <span>{formatFileSize(doc.size)}</span>
+                                          <span>•</span>
+                                          <span className="capitalize">{doc.document_category}</span>
+                                        </div>
+                                      </div>
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              <div className="flex justify-end">
                 <button
                   onClick={() => setShowDetailsModal(false)}
                   className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
                 >
                   Close
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Upload Document Modal */}
+      {showUploadModal && currentOrder && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white dark:bg-slate-800 rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="p-6 border-b border-slate-200 dark:border-slate-700">
+              <div className="flex items-center justify-between">
+                <h3 className="text-xl font-semibold text-slate-900 dark:text-slate-200">
+                  Upload Document - {currentOrder.project_title}
+                </h3>
+                <button
+                  onClick={() => setShowUploadModal(false)}
+                  className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-300"
+                >
+                  <X className="h-6 w-6" />
+                </button>
+              </div>
+            </div>
+
+            <form onSubmit={handleDocumentSubmit} className="p-6 space-y-6">
+              {uploadError && (
+                <div className="bg-red-50 dark:bg-red-900/20 text-red-800 dark:text-red-300 p-4 rounded-lg flex items-center">
+                  <AlertCircle className="h-5 w-5 mr-2" />
+                  {uploadError}
+                </div>
+              )}
+
+              {uploadSuccess && (
+                <div className="bg-green-50 dark:bg-green-900/20 text-green-800 dark:text-green-300 p-4 rounded-lg flex items-center">
+                  <CheckCircle className="h-5 w-5 mr-2" />
+                  {uploadSuccess}
+                </div>
+              )}
+
+              {/* File Upload */}
+              <div>
+                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+                  Upload File to Supabase Storage
+                </label>
+                <div className="border-2 border-dashed border-slate-300 dark:border-slate-700 rounded-lg p-6 text-center">
+                  <Upload className="h-12 w-12 text-slate-400 mx-auto mb-4" />
+                  <div className="space-y-2">
+                    <label className="cursor-pointer">
+                      <span className="text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300">
+                        Choose a file
+                      </span>
+                      <input
+                        type="file"
+                        className="hidden"
+                        onChange={handleFileUpload}
+                        accept=".pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx"
+                        disabled={isUploading}
+                      />
+                    </label>
+                    <p className="text-sm text-slate-500 dark:text-slate-400">
+                      or drag and drop
+                    </p>
+                    <p className="text-xs text-slate-400 dark:text-slate-500">
+                      PDF, DOC, PPT, XLS files up to 10MB
+                    </p>
+                  </div>
+                  
+                  {/* Upload Progress */}
+                  {isUploading && (
+                    <div className="mt-4">
+                      <div className="flex items-center justify-center mb-2">
+                        <Loader className="h-4 w-4 animate-spin mr-2" />
+                        <span className="text-sm text-slate-600 dark:text-slate-400">Uploading...</span>
+                      </div>
+                      <div className="w-full bg-slate-200 dark:bg-slate-600 rounded-full h-2">
+                        <div 
+                          className="bg-blue-600 h-2 rounded-full transition-all duration-300"
+                          style={{ width: `${uploadProgress}%` }}
+                        ></div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Manual URL Input */}
+              <div className="text-center text-slate-500 dark:text-slate-400">
+                <span>OR</span>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+                  Document URL (External Link)
+                </label>
+                <input
+                  type="url"
+                  value={uploadFormData.url}
+                  onChange={(e) => setUploadFormData({ ...uploadFormData, url: e.target.value })}
+                  className="w-full px-3 py-2 border border-slate-300 dark:border-slate-700 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 dark:bg-slate-900 dark:text-slate-200"
+                  placeholder="https://example.com/document.pdf"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+                  Document Name
+                </label>
+                <input
+                  type="text"
+                  value={uploadFormData.name}
+                  onChange={(e) => setUploadFormData({ ...uploadFormData, name: e.target.value })}
+                  className="w-full px-3 py-2 border border-slate-300 dark:border-slate-700 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 dark:bg-slate-900 dark:text-slate-200"
+                  placeholder="Enter document name"
+                  required
+                />
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+                    Review Stage
+                  </label>
+                  <select
+                    value={uploadFormData.review_stage}
+                    onChange={(e) => setUploadFormData({ ...uploadFormData, review_stage: e.target.value as any })}
+                    className="w-full px-3 py-2 border border-slate-300 dark:border-slate-700 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 dark:bg-slate-900 dark:text-slate-200"
+                  >
+                    {reviewStages.map(stage => (
+                      <option key={stage.value} value={stage.value}>
+                        {stage.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+                    Document Category
+                  </label>
+                  <select
+                    value={uploadFormData.document_category}
+                    onChange={(e) => setUploadFormData({ ...uploadFormData, document_category: e.target.value as any })}
+                    className="w-full px-3 py-2 border border-slate-300 dark:border-slate-700 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 dark:bg-slate-900 dark:text-slate-200"
+                  >
+                    {documentCategories.map(category => (
+                      <option key={category.value} value={category.value}>
+                        {category.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+                  Description (Optional)
+                </label>
+                <textarea
+                  value={uploadFormData.description}
+                  onChange={(e) => setUploadFormData({ ...uploadFormData, description: e.target.value })}
+                  rows={3}
+                  className="w-full px-3 py-2 border border-slate-300 dark:border-slate-700 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 dark:bg-slate-900 dark:text-slate-200"
+                  placeholder="Brief description of the document"
+                />
+              </div>
+
+              <div className="flex justify-end space-x-3">
+                <button
+                  type="button"
+                  onClick={() => setShowUploadModal(false)}
+                  className="px-4 py-2 border border-slate-300 dark:border-slate-700 rounded-md text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={!uploadFormData.name || !uploadFormData.url || isUploading}
+                  className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  Add Document
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Send Documents Modal */}
+      {showSendModal && currentOrder && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white dark:bg-slate-800 rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="p-6 border-b border-slate-200 dark:border-slate-700">
+              <div className="flex items-center justify-between">
+                <h3 className="text-xl font-semibold text-slate-900 dark:text-slate-200">
+                  Send Documents - {currentOrder.project_title}
+                </h3>
+                <button
+                  onClick={() => setShowSendModal(false)}
+                  className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-300"
+                >
+                  <X className="h-6 w-6" />
+                </button>
+              </div>
+            </div>
+
+            <div className="p-6">
+              {sendError && (
+                <div className="mb-6 bg-red-50 dark:bg-red-900/20 text-red-800 dark:text-red-300 p-4 rounded-lg flex items-center">
+                  <AlertCircle className="h-5 w-5 mr-2" />
+                  {sendError}
+                </div>
+              )}
+
+              {sendSuccess && (
+                <div className="mb-6 bg-green-50 dark:bg-green-900/20 text-green-800 dark:text-green-300 p-4 rounded-lg flex items-center">
+                  <CheckCircle className="h-5 w-5 mr-2" />
+                  {sendSuccess}
+                </div>
+              )}
+
+              <div className="mb-6">
+                <h4 className="text-lg font-medium text-slate-900 dark:text-slate-200 mb-2">Customer Information</h4>
+                <div className="bg-slate-50 dark:bg-slate-700 p-4 rounded-lg">
+                  <p><strong>Name:</strong> {currentOrder.customer_name}</p>
+                  <p><strong>Email:</strong> {currentOrder.customer_email}</p>
+                  <p><strong>Order ID:</strong> {currentOrder.id}</p>
+                </div>
+              </div>
+
+              <div className="mb-6">
+                <h4 className="text-lg font-medium text-slate-900 dark:text-slate-200 mb-4">Select Review Stages to Send</h4>
+                <div className="space-y-3">
+                  {reviewStages.map((stage) => {
+                    const documents = getDocumentsByReviewStage(currentOrder.projectId, stage.value);
+                    
+                    return (
+                      <div
+                        key={stage.value}
+                        className={`border rounded-lg p-4 cursor-pointer transition-colors ${
+                          selectedReviewStages.includes(stage.value)
+                            ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20'
+                            : 'border-slate-300 dark:border-slate-700 hover:border-slate-400'
+                        }`}
+                        onClick={() => handleReviewStageToggle(stage.value)}
+                      >
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center">
+                            <input
+                              type="checkbox"
+                              checked={selectedReviewStages.includes(stage.value)}
+                              onChange={() => handleReviewStageToggle(stage.value)}
+                              className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-slate-300 rounded mr-3"
+                            />
+                            <div>
+                              <h5 className="font-medium text-slate-900 dark:text-slate-200">{stage.label}</h5>
+                              <p className="text-sm text-slate-500 dark:text-slate-400">{stage.description}</p>
+                            </div>
+                          </div>
+                          <div className="flex items-center space-x-2">
+                            <FileText className="h-5 w-5 text-slate-400" />
+                            <span className="text-sm text-slate-600 dark:text-slate-400">
+                              {documents.length} docs
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              <div className="flex justify-end space-x-3">
+                <button
+                  onClick={() => setShowSendModal(false)}
+                  className="px-4 py-2 border border-slate-300 dark:border-slate-700 rounded-md text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleSendDocuments}
+                  disabled={selectedReviewStages.length === 0 || isSending}
+                  className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center"
+                >
+                  {isSending ? (
+                    <>
+                      <Loader className="h-4 w-4 mr-2 animate-spin" />
+                      Sending...
+                    </>
+                  ) : (
+                    'Send Documents'
+                  )}
                 </button>
               </div>
             </div>
