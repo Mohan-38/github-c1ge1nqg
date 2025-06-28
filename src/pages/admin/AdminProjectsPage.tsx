@@ -17,7 +17,7 @@ import ProjectDocumentsManager from '../../components/admin/ProjectDocumentsMana
 import { Project } from '../../types';
 
 const AdminProjectsPage = () => {
-  const { projects, addProject, updateProject, deleteProject } = useProjects();
+  const { projects, addProject, updateProject, deleteProject, getProjectDocuments } = useProjects();
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
@@ -98,6 +98,12 @@ const AdminProjectsPage = () => {
       setSortField(field);
       setSortDirection('asc');
     }
+  };
+
+  // Get document count for a project
+  const getDocumentCount = (projectId: string): number => {
+    const documents = getProjectDocuments(projectId);
+    return documents.length;
   };
 
   // Reset and open add modal
@@ -359,6 +365,15 @@ const AdminProjectsPage = () => {
                   </th>
                   <th 
                     scope="col" 
+                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider"
+                  >
+                    <div className="flex items-center">
+                      <FileText className="h-4 w-4 mr-1" />
+                      Documents
+                    </div>
+                  </th>
+                  <th 
+                    scope="col" 
                     className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider cursor-pointer"
                     onClick={() => handleSort('featured')}
                   >
@@ -382,96 +397,112 @@ const AdminProjectsPage = () => {
               <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
                 {filteredProjects.length === 0 ? (
                   <tr>
-                    <td colSpan={5} className="px-6 py-4 text-center text-gray-500 dark:text-gray-400">
+                    <td colSpan={6} className="px-6 py-4 text-center text-gray-500 dark:text-gray-400">
                       No projects found
                     </td>
                   </tr>
                 ) : (
-                  filteredProjects.map((project) => (
-                    <tr key={project.id} className="hover:bg-gray-50 dark:hover:bg-gray-700">
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="flex items-center">
-                          <div className="h-10 w-10 flex-shrink-0">
-                            <img 
-                              className="h-10 w-10 rounded-md object-cover" 
-                              src={project.imageUpload ? URL.createObjectURL(project.imageUpload) : project.image} 
-                              alt={project.title} 
-                            />
-                          </div>
-                          <div className="ml-4">
-                            <div className="text-sm font-medium text-gray-900 dark:text-white">
-                              {project.title}
+                  filteredProjects.map((project) => {
+                    const documentCount = getDocumentCount(project.id);
+                    
+                    return (
+                      <tr key={project.id} className="hover:bg-gray-50 dark:hover:bg-gray-700">
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="flex items-center">
+                            <div className="h-10 w-10 flex-shrink-0">
+                              <img 
+                                className="h-10 w-10 rounded-md object-cover" 
+                                src={project.imageUpload ? URL.createObjectURL(project.imageUpload) : project.image} 
+                                alt={project.title} 
+                              />
+                            </div>
+                            <div className="ml-4">
+                              <div className="text-sm font-medium text-gray-900 dark:text-white">
+                                {project.title}
+                              </div>
                             </div>
                           </div>
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                          project.category.toLowerCase() === 'iot' 
-                            ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' 
-                            : project.category.toLowerCase() === 'blockchain'
-                              ? 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200'
-                              : 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200'
-                        }`}>
-                          {project.category}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
-                        ₹{project.price.toLocaleString('en-IN')}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
-                        {project.featured ? (
-                          <Check className="h-5 w-5 text-green-500 dark:text-green-400" />
-                        ) : (
-                          <X className="h-5 w-5 text-gray-400 dark:text-gray-500" />
-                        )}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                        <div className="flex items-center justify-end space-x-2">
-                          <button
-                            onClick={() => openDocumentsModal(project)}
-                            className="text-green-600 hover:text-green-800 dark:text-green-400 dark:hover:text-green-300 p-1"
-                            title="Manage Documents"
-                          >
-                            <FileText className="h-4 w-4" />
-                          </button>
-                          <button
-                            onClick={() => openEditModal(project)}
-                            className="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 p-1"
-                          >
-                            <Edit className="h-4 w-4" />
-                          </button>
-                          <button
-                            onClick={() => openDeleteModal(project)}
-                            className="text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300 p-1"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </button>
-                          <div className="relative group">
-                            <button className="text-gray-600 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-300 p-1">
-                              <MoreHorizontal className="h-4 w-4" />
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                            project.category.toLowerCase() === 'iot' 
+                              ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' 
+                              : project.category.toLowerCase() === 'blockchain'
+                                ? 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200'
+                                : 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200'
+                          }`}>
+                            {project.category}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
+                          ₹{project.price.toLocaleString('en-IN')}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="flex items-center">
+                            <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium ${
+                              documentCount > 0 
+                                ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
+                                : 'bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-400'
+                            }`}>
+                              <FileText className="h-3 w-3 mr-1" />
+                              {documentCount} {documentCount === 1 ? 'doc' : 'docs'}
+                            </span>
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
+                          {project.featured ? (
+                            <Check className="h-5 w-5 text-green-500 dark:text-green-400" />
+                          ) : (
+                            <X className="h-5 w-5 text-gray-400 dark:text-gray-500" />
+                          )}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                          <div className="flex items-center justify-end space-x-2">
+                            <button
+                              onClick={() => openDocumentsModal(project)}
+                              className="text-green-600 hover:text-green-800 dark:text-green-400 dark:hover:text-green-300 p-1"
+                              title="Manage Documents"
+                            >
+                              <FileText className="h-4 w-4" />
                             </button>
-                            <div className="absolute right-0 mt-2 w-48 bg-white dark:bg-gray-700 rounded-md shadow-lg py-1 z-10 hidden group-hover:block">
-                              <Link 
-                                to={`/projects/${project.id}`}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="block px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-600"
-                              >
-                                View Project
-                              </Link>
-                              <button 
-                                onClick={() => updateProject(project.id, { featured: !project.featured })}
-                                className="block w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-600"
-                              >
-                                {project.featured ? 'Remove from Featured' : 'Mark as Featured'}
+                            <button
+                              onClick={() => openEditModal(project)}
+                              className="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 p-1"
+                            >
+                              <Edit className="h-4 w-4" />
+                            </button>
+                            <button
+                              onClick={() => openDeleteModal(project)}
+                              className="text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300 p-1"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </button>
+                            <div className="relative group">
+                              <button className="text-gray-600 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-300 p-1">
+                                <MoreHorizontal className="h-4 w-4" />
                               </button>
+                              <div className="absolute right-0 mt-2 w-48 bg-white dark:bg-gray-700 rounded-md shadow-lg py-1 z-10 hidden group-hover:block">
+                                <Link 
+                                  to={`/projects/${project.id}`}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="block px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-600"
+                                >
+                                  View Project
+                                </Link>
+                                <button 
+                                  onClick={() => updateProject(project.id, { featured: !project.featured })}
+                                  className="block w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-600"
+                                >
+                                  {project.featured ? 'Remove from Featured' : 'Mark as Featured'}
+                                </button>
+                              </div>
                             </div>
                           </div>
-                        </div>
-                      </td>
-                    </tr>
-                  ))
+                        </td>
+                      </tr>
+                    );
+                  })
                 )}
               </tbody>
             </table>

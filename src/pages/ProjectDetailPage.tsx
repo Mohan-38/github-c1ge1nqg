@@ -12,7 +12,13 @@ import {
   FileText,
   Download,
   ChevronDown,
-  ChevronUp
+  ChevronUp,
+  Presentation,
+  FileSpreadsheet,
+  File,
+  Package,
+  Shield,
+  Clock
 } from 'lucide-react';
 import { useProjects } from '../context/ProjectContext';
 
@@ -72,17 +78,23 @@ const ProjectDetailPage = () => {
     { 
       value: 'review_1', 
       label: 'Review 1', 
-      description: 'Initial project review and requirements' 
+      description: 'Initial project review and requirements',
+      icon: FileText,
+      color: 'blue'
     },
     { 
       value: 'review_2', 
       label: 'Review 2', 
-      description: 'Mid-project review and progress assessment' 
+      description: 'Mid-project review and progress assessment',
+      icon: Presentation,
+      color: 'purple'
     },
     { 
       value: 'review_3', 
       label: 'Review 3', 
-      description: 'Final review and project completion' 
+      description: 'Final review and project completion',
+      icon: FileSpreadsheet,
+      color: 'green'
     }
   ];
 
@@ -97,6 +109,25 @@ const ProjectDetailPage = () => {
     const i = Math.floor(Math.log(bytes) / Math.log(k));
     return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
   };
+
+  const getDocumentIcon = (category: string) => {
+    switch (category) {
+      case 'presentation':
+        return Presentation;
+      case 'document':
+        return FileText;
+      case 'report':
+        return FileSpreadsheet;
+      default:
+        return File;
+    }
+  };
+
+  // Get all documents for this project
+  const allDocuments = reviewStages.reduce((acc, stage) => {
+    const docs = getDocumentsByReviewStage(project.id, stage.value);
+    return acc + docs.length;
+  }, 0);
 
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-900 pt-24 pb-16">
@@ -170,29 +201,94 @@ const ProjectDetailPage = () => {
 
                 {/* Project Documents Section */}
                 <div className="mb-8">
-                  <h2 className="text-xl font-semibold text-slate-900 dark:text-slate-200 mb-4">Project Documents</h2>
+                  <div className="flex items-center mb-6">
+                    <Package className="h-6 w-6 text-blue-600 dark:text-blue-400 mr-3" />
+                    <div>
+                      <h2 className="text-xl font-semibold text-slate-900 dark:text-slate-200">
+                        Project Documents & Deliverables
+                      </h2>
+                      <p className="text-slate-600 dark:text-slate-400 text-sm">
+                        Complete documentation package organized by review stages
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Documents Overview */}
+                  <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4 mb-6">
+                    <div className="flex items-start">
+                      <Shield className="h-5 w-5 text-blue-600 dark:text-blue-400 mr-3 mt-0.5" />
+                      <div className="flex-1">
+                        <h3 className="font-medium text-blue-800 dark:text-blue-300 mb-2">
+                          📦 What You'll Receive
+                        </h3>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm text-blue-700 dark:text-blue-400">
+                          <div className="flex items-center">
+                            <FileText className="h-4 w-4 mr-2" />
+                            Complete source code
+                          </div>
+                          <div className="flex items-center">
+                            <Presentation className="h-4 w-4 mr-2" />
+                            Project presentations
+                          </div>
+                          <div className="flex items-center">
+                            <FileSpreadsheet className="h-4 w-4 mr-2" />
+                            Technical documentation
+                          </div>
+                          <div className="flex items-center">
+                            <File className="h-4 w-4 mr-2" />
+                            Implementation guides
+                          </div>
+                        </div>
+                        {allDocuments > 0 && (
+                          <div className="mt-3 p-2 bg-blue-100 dark:bg-blue-800 rounded text-sm">
+                            <strong>{allDocuments} documents</strong> currently available across all review stages
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Review Stages */}
                   <div className="space-y-4">
                     {reviewStages.map((stage) => {
                       const documents = getDocumentsByReviewStage(project.id, stage.value);
                       const isExpanded = expandedReviewStage === stage.value;
+                      const StageIcon = stage.icon;
+                      
+                      const stageColors = {
+                        blue: 'border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-900/20',
+                        purple: 'border-purple-200 dark:border-purple-800 bg-purple-50 dark:bg-purple-900/20',
+                        green: 'border-green-200 dark:border-green-800 bg-green-50 dark:bg-green-900/20'
+                      };
                       
                       return (
-                        <div key={stage.value} className="border border-slate-200 dark:border-slate-700 rounded-lg">
+                        <div key={stage.value} className={`border rounded-lg ${stageColors[stage.color as keyof typeof stageColors]}`}>
                           <button
                             onClick={() => toggleReviewStage(stage.value)}
-                            className="w-full px-4 py-3 flex items-center justify-between text-left hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors"
+                            className="w-full px-6 py-4 flex items-center justify-between text-left hover:bg-white/50 dark:hover:bg-slate-800/50 transition-colors rounded-lg"
                           >
-                            <div>
-                              <h3 className="font-medium text-slate-900 dark:text-slate-200">
-                                {stage.label}
-                              </h3>
-                              <p className="text-sm text-slate-500 dark:text-slate-400">
-                                {stage.description}
-                              </p>
+                            <div className="flex items-center">
+                              <StageIcon className={`h-6 w-6 mr-4 ${
+                                stage.color === 'blue' ? 'text-blue-600 dark:text-blue-400' :
+                                stage.color === 'purple' ? 'text-purple-600 dark:text-purple-400' :
+                                'text-green-600 dark:text-green-400'
+                              }`} />
+                              <div>
+                                <h3 className="font-semibold text-slate-900 dark:text-slate-200">
+                                  {stage.label}
+                                </h3>
+                                <p className="text-sm text-slate-600 dark:text-slate-400">
+                                  {stage.description}
+                                </p>
+                              </div>
                             </div>
-                            <div className="flex items-center space-x-2">
-                              <span className="bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 px-2 py-1 rounded-full text-xs">
-                                {documents.length} docs
+                            <div className="flex items-center space-x-3">
+                              <span className={`px-3 py-1 rounded-full text-xs font-medium ${
+                                documents.length > 0 
+                                  ? 'bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200'
+                                  : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400'
+                              }`}>
+                                {documents.length} {documents.length === 1 ? 'doc' : 'docs'}
                               </span>
                               {isExpanded ? (
                                 <ChevronUp className="h-5 w-5 text-slate-400" />
@@ -203,49 +299,49 @@ const ProjectDetailPage = () => {
                           </button>
                           
                           {isExpanded && (
-                            <div className="px-4 pb-4 border-t border-slate-200 dark:border-slate-700">
+                            <div className="px-6 pb-4 border-t border-slate-200 dark:border-slate-700">
                               {documents.length === 0 ? (
                                 <div className="text-center py-6 text-slate-500 dark:text-slate-400">
                                   <FileText className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                                  <p className="text-sm">No documents available for this review stage</p>
+                                  <p className="text-sm">Documents will be available after purchase</p>
+                                  <p className="text-xs mt-1">This stage will include presentations, documentation, and reports</p>
                                 </div>
                               ) : (
-                                <div className="space-y-2 mt-3">
-                                  {documents.map((doc) => (
-                                    <div
-                                      key={doc.id}
-                                      className="flex items-center justify-between p-3 bg-slate-50 dark:bg-slate-700 rounded-lg"
-                                    >
-                                      <div className="flex items-center space-x-3">
-                                        <FileText className="h-6 w-6 text-blue-600 dark:text-blue-400" />
-                                        <div>
-                                          <h4 className="font-medium text-slate-900 dark:text-slate-200">
-                                            {doc.name}
-                                          </h4>
-                                          <div className="flex items-center space-x-2 text-sm text-slate-500 dark:text-slate-400">
-                                            <span>{formatFileSize(doc.size)}</span>
-                                            <span>•</span>
-                                            <span className="capitalize">{doc.document_category}</span>
+                                <div className="space-y-3 mt-4">
+                                  {documents.map((doc) => {
+                                    const DocIcon = getDocumentIcon(doc.document_category);
+                                    return (
+                                      <div
+                                        key={doc.id}
+                                        className="flex items-center justify-between p-3 bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700"
+                                      >
+                                        <div className="flex items-center space-x-3">
+                                          <DocIcon className="h-6 w-6 text-blue-600 dark:text-blue-400" />
+                                          <div>
+                                            <h4 className="font-medium text-slate-900 dark:text-slate-200">
+                                              {doc.name}
+                                            </h4>
+                                            <div className="flex items-center space-x-2 text-sm text-slate-500 dark:text-slate-400">
+                                              <span>{formatFileSize(doc.size)}</span>
+                                              <span>•</span>
+                                              <span className="capitalize">{doc.document_category}</span>
+                                            </div>
+                                            {doc.description && (
+                                              <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">
+                                                {doc.description}
+                                              </p>
+                                            )}
                                           </div>
-                                          {doc.description && (
-                                            <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">
-                                              {doc.description}
-                                            </p>
-                                          )}
+                                        </div>
+                                        
+                                        <div className="flex items-center space-x-2">
+                                          <span className="text-xs bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 px-2 py-1 rounded">
+                                            Available after purchase
+                                          </span>
                                         </div>
                                       </div>
-                                      
-                                      <a
-                                        href={doc.url}
-                                        target="_blank"
-                                        rel="noopener noreferrer"
-                                        className="p-2 text-blue-600 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-900 rounded-lg transition-colors"
-                                        title="Download document"
-                                      >
-                                        <Download className="h-4 w-4" />
-                                      </a>
-                                    </div>
-                                  ))}
+                                    );
+                                  })}
                                 </div>
                               )}
                             </div>
@@ -253,6 +349,22 @@ const ProjectDetailPage = () => {
                         </div>
                       );
                     })}
+                  </div>
+
+                  {/* Document Delivery Info */}
+                  <div className="mt-6 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg p-4">
+                    <div className="flex items-start">
+                      <Clock className="h-5 w-5 text-amber-600 dark:text-amber-400 mr-3 mt-0.5" />
+                      <div className="text-sm text-amber-800 dark:text-amber-300">
+                        <h4 className="font-medium mb-1">📧 Document Delivery</h4>
+                        <ul className="space-y-1">
+                          <li>• Documents are delivered via secure email links after purchase</li>
+                          <li>• All files are organized by review stages for easy navigation</li>
+                          <li>• Download links are time-limited and email-specific for security</li>
+                          <li>• If documents aren't ready, you'll receive them within 3 business days</li>
+                        </ul>
+                      </div>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -287,13 +399,26 @@ const ProjectDetailPage = () => {
                         <p className="font-medium mb-1">What you'll receive:</p>
                         <ul className="list-disc list-inside space-y-1 pl-1">
                           <li>Complete source code</li>
-                          <li>Documentation</li>
+                          <li>Documentation across 3 review stages</li>
                           <li>Installation guide</li>
-                          <li>Support via email</li>
-                          <li>Project review documents</li>
+                          <li>Technical specifications</li>
+                          <li>Project presentations</li>
+                          <li>Email support</li>
                         </ul>
                       </div>
                     </div>
+
+                    {/* Document Summary */}
+                    {allDocuments > 0 && (
+                      <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg p-3 mt-4">
+                        <div className="flex items-center text-green-800 dark:text-green-300">
+                          <Package className="h-4 w-4 mr-2" />
+                          <span className="text-sm font-medium">
+                            {allDocuments} documents ready for delivery
+                          </span>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>
