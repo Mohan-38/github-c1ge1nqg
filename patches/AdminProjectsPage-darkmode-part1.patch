@@ -1,0 +1,4 @@
+<p className="text-slate-500">Add, edit, or remove projects from your portfolio.</p>
+=======
+            <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100">Manage Projects</h1>
+            <p className="text-slate-500 dark:text-slate-400">Add, edit, or remove projects from your portfolio.</p>
