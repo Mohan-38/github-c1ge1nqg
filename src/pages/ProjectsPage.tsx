@@ -1,12 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useProjects } from '../context/ProjectContext';
+import { useSettings } from '../context/SettingsContext';
 import ProjectCard from '../components/projects/ProjectCard';
-import { Filter, Search, X } from 'lucide-react';
+import { Filter, Search, X, Eye, ShoppingCart } from 'lucide-react';
 import { Project } from '../types';
 
 const ProjectsPage = () => {
   const { projects } = useProjects();
+  const { isPortfolioMode } = useSettings();
   const [searchParams, setSearchParams] = useSearchParams();
   const [filteredProjects, setFilteredProjects] = useState<Project[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
@@ -44,21 +46,29 @@ const ProjectsPage = () => {
       );
     }
 
-    result = result.filter(project =>
-      project.price >= priceRange[0] && project.price <= priceRange[1]
-    );
+    // Only apply price filter in marketplace mode
+    if (!isPortfolioMode) {
+      result = result.filter(project =>
+        project.price >= priceRange[0] && project.price <= priceRange[1]
+      );
+    }
 
     setFilteredProjects(result);
-  }, [projects, searchTerm, selectedCategory, priceRange]);
+  }, [projects, searchTerm, selectedCategory, priceRange, isPortfolioMode]);
 
   useEffect(() => {
     const params: Record<string, string> = {};
     if (searchTerm) params.search = searchTerm;
     if (selectedCategory) params.category = selectedCategory;
-    params.minPrice = priceRange[0].toString();
-    params.maxPrice = priceRange[1].toString();
+    
+    // Only include price params in marketplace mode
+    if (!isPortfolioMode) {
+      params.minPrice = priceRange[0].toString();
+      params.maxPrice = priceRange[1].toString();
+    }
+    
     setSearchParams(params);
-  }, [searchTerm, selectedCategory, priceRange, setSearchParams]);
+  }, [searchTerm, selectedCategory, priceRange, setSearchParams, isPortfolioMode]);
 
   const handleCategoryChange = (category: string | null) => setSelectedCategory(category);
 
@@ -82,7 +92,9 @@ const ProjectsPage = () => {
   const clearFilters = () => {
     setSearchTerm('');
     setSelectedCategory(null);
-    setPriceRange([0, 25000]);
+    if (!isPortfolioMode) {
+      setPriceRange([0, 25000]);
+    }
   };
 
   const categories = ['IoT', 'Blockchain', 'Web'];
@@ -90,10 +102,30 @@ const ProjectsPage = () => {
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-900 pt-24 pb-16 text-slate-900 dark:text-slate-200">
       <div className="container mx-auto px-4 md:px-6">
+        {/* Header with Mode Indicator */}
         <div className="text-center mb-12">
-          <h1 className="text-3xl font-bold text-slate-900 mb-4">All Projects</h1>
-          <p className="text-lg text-slate-600 max-w-2xl mx-auto">
-            Browse through my collection of IoT, blockchain, and web development projects
+          <div className="flex items-center justify-center mb-4">
+            {isPortfolioMode ? (
+              <div className="flex items-center bg-blue-100 dark:bg-blue-900/20 text-blue-800 dark:text-blue-300 px-4 py-2 rounded-full">
+                <Eye className="h-5 w-5 mr-2" />
+                <span className="font-medium">Portfolio Mode</span>
+              </div>
+            ) : (
+              <div className="flex items-center bg-green-100 dark:bg-green-900/20 text-green-800 dark:text-green-300 px-4 py-2 rounded-full">
+                <ShoppingCart className="h-5 w-5 mr-2" />
+                <span className="font-medium">Marketplace Mode</span>
+              </div>
+            )}
+          </div>
+          
+          <h1 className="text-3xl font-bold text-slate-900 dark:text-slate-200 mb-4">
+            {isPortfolioMode ? 'Project Portfolio' : 'All Projects'}
+          </h1>
+          <p className="text-lg text-slate-600 dark:text-slate-400 max-w-2xl mx-auto">
+            {isPortfolioMode 
+              ? 'Explore our showcase of IoT, blockchain, and web development projects. Contact us for custom development.'
+              : 'Browse through my collection of IoT, blockchain, and web development projects'
+            }
           </p>
         </div>
 
@@ -101,7 +133,7 @@ const ProjectsPage = () => {
           <div className="lg:hidden mb-4">
             <button
               onClick={() => setShowFilters(!showFilters)}
-              className="flex items-center justify-center w-full px-4 py-2 bg-white rounded-lg shadow text-slate-700 border border-slate-200"
+              className="flex items-center justify-center w-full px-4 py-2 bg-white dark:bg-slate-800 rounded-lg shadow text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700"
             >
               <Filter className="h-4 w-4 mr-2" />
               {showFilters ? 'Hide Filters' : 'Show Filters'}
@@ -111,10 +143,10 @@ const ProjectsPage = () => {
           <div className={`lg:w-1/4 ${showFilters ? 'block' : 'hidden lg:block'}`}>
             <div className="lg:sticky lg:top-24 bg-white dark:bg-slate-800 rounded-lg shadow-md p-6">
               <div className="flex justify-between items-center mb-4">
-                <h2 className="text-xl font-semibold text-slate-900">Filters</h2>
+                <h2 className="text-xl font-semibold text-slate-900 dark:text-slate-200">Filters</h2>
                 <button
                   onClick={clearFilters}
-                  className="text-sm text-blue-600 hover:text-blue-800 flex items-center"
+                  className="text-sm text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 flex items-center"
                 >
                   <X className="h-4 w-4 mr-1" />
                   Clear all
@@ -122,24 +154,24 @@ const ProjectsPage = () => {
               </div>
 
               <div className="mb-6">
-                <label htmlFor="search" className="block text-sm font-medium text-slate-700 mb-2">
+                <label htmlFor="search" className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
                   Search
                 </label>
                 <div className="relative">
-                    <input
-                      type="text"
-                      id="search"
-                      value={searchTerm}
-                      onChange={handleSearchChange}
-                      placeholder="Search projects..."
-                      className="pl-10 pr-4 py-2 w-full border border-slate-300 dark:border-slate-700 rounded-lg focus:ring-blue-500 focus:border-blue-500 dark:bg-slate-900 dark:text-slate-200 placeholder-slate-400 dark:placeholder-slate-500"
-                    />
+                  <input
+                    type="text"
+                    id="search"
+                    value={searchTerm}
+                    onChange={handleSearchChange}
+                    placeholder="Search projects..."
+                    className="pl-10 pr-4 py-2 w-full border border-slate-300 dark:border-slate-700 rounded-lg focus:ring-blue-500 focus:border-blue-500 dark:bg-slate-900 dark:text-slate-200 placeholder-slate-400 dark:placeholder-slate-500"
+                  />
                   <Search className="absolute left-3 top-2.5 h-5 w-5 text-slate-400" />
                 </div>
               </div>
 
               <div className="mb-6">
-                <h3 className="text-sm font-medium text-slate-700 mb-2">Categories</h3>
+                <h3 className="text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Categories</h3>
                 <div className="space-y-2">
                   <div className="flex items-center">
                     <input
@@ -148,24 +180,24 @@ const ProjectsPage = () => {
                       type="radio"
                       checked={selectedCategory === null}
                       onChange={() => handleCategoryChange(null)}
-                      className="h-4 w-4 text-blue-600 focus:ring-blue-500"
+                      className="h-4 w-4 text-blue-600 focus:ring-blue-500 dark:ring-offset-slate-900"
                     />
-                    <label htmlFor="category-all" className="ml-3 text-sm text-slate-600">
+                    <label htmlFor="category-all" className="ml-3 text-sm text-slate-600 dark:text-slate-400">
                       All Categories
                     </label>
                   </div>
 
                   {categories.map(category => (
                     <div key={category} className="flex items-center">
-                    <input
-                      id={`category-${category.toLowerCase()}`}
-                      name="category"
-                      type="radio"
-                      checked={selectedCategory === category.toLowerCase()}
-                      onChange={() => handleCategoryChange(category.toLowerCase())}
-                      className="h-4 w-4 text-blue-600 focus:ring-blue-500 dark:ring-offset-slate-900"
-                    />
-                      <label htmlFor={`category-${category.toLowerCase()}`} className="ml-3 text-sm text-slate-600">
+                      <input
+                        id={`category-${category.toLowerCase()}`}
+                        name="category"
+                        type="radio"
+                        checked={selectedCategory === category.toLowerCase()}
+                        onChange={() => handleCategoryChange(category.toLowerCase())}
+                        className="h-4 w-4 text-blue-600 focus:ring-blue-500 dark:ring-offset-slate-900"
+                      />
+                      <label htmlFor={`category-${category.toLowerCase()}`} className="ml-3 text-sm text-slate-600 dark:text-slate-400">
                         {category}
                       </label>
                     </div>
@@ -173,73 +205,76 @@ const ProjectsPage = () => {
                 </div>
               </div>
 
-              <div>
-                <h3 className="text-sm font-medium text-slate-700 mb-2">Price Range</h3>
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-sm text-slate-600">₹{priceRange[0]}</span>
-                  <span className="text-sm text-slate-600">₹{priceRange[1]}</span>
-                </div>
+              {/* Price Range - Only show in marketplace mode */}
+              {!isPortfolioMode && (
+                <div>
+                  <h3 className="text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Price Range</h3>
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-sm text-slate-600 dark:text-slate-400">₹{priceRange[0]}</span>
+                    <span className="text-sm text-slate-600 dark:text-slate-400">₹{priceRange[1]}</span>
+                  </div>
 
-                <div className="mb-4">
-                  <input
-                    type="range"
-                    min="0"
-                    max="25000"
-                    step="1000"
-                    value={priceRange[0]}
-                    onChange={(e) => handlePriceChange(e, 0)}
-                    className="w-full"
-                  />
-                  <input
-                    type="range"
-                    min="0"
-                    max="25000"
-                    step="1000"
-                    value={priceRange[1]}
-                    onChange={(e) => handlePriceChange(e, 1)}
-                    className="w-full"
-                  />
-                </div>
-
-                <div className="flex space-x-4">
-                  <div>
-                    <label htmlFor="min-price" className="block text-xs text-slate-600 dark:text-slate-400 mb-1">
-                      Min Price
-                    </label>
+                  <div className="mb-4">
                     <input
-                      type="number"
-                      id="min-price"
+                      type="range"
                       min="0"
                       max="25000"
+                      step="1000"
                       value={priceRange[0]}
                       onChange={(e) => handlePriceChange(e, 0)}
-                      className="w-full px-3 py-1.5 text-sm border border-slate-300 dark:border-slate-700 rounded-md dark:bg-slate-900 dark:text-slate-200 placeholder-slate-400 dark:placeholder-slate-500"
+                      className="w-full"
                     />
-                  </div>
-                  <div>
-                    <label htmlFor="max-price" className="block text-xs text-slate-600 dark:text-slate-400 mb-1">
-                      Max Price
-                    </label>
                     <input
-                      type="number"
-                      id="max-price"
+                      type="range"
                       min="0"
                       max="25000"
+                      step="1000"
                       value={priceRange[1]}
                       onChange={(e) => handlePriceChange(e, 1)}
-                      className="w-full px-3 py-1.5 text-sm border border-slate-300 dark:border-slate-700 rounded-md dark:bg-slate-900 dark:text-slate-200 placeholder-slate-400 dark:placeholder-slate-500"
+                      className="w-full"
                     />
                   </div>
+
+                  <div className="flex space-x-4">
+                    <div>
+                      <label htmlFor="min-price" className="block text-xs text-slate-600 dark:text-slate-400 mb-1">
+                        Min Price
+                      </label>
+                      <input
+                        type="number"
+                        id="min-price"
+                        min="0"
+                        max="25000"
+                        value={priceRange[0]}
+                        onChange={(e) => handlePriceChange(e, 0)}
+                        className="w-full px-3 py-1.5 text-sm border border-slate-300 dark:border-slate-700 rounded-md dark:bg-slate-900 dark:text-slate-200 placeholder-slate-400 dark:placeholder-slate-500"
+                      />
+                    </div>
+                    <div>
+                      <label htmlFor="max-price" className="block text-xs text-slate-600 dark:text-slate-400 mb-1">
+                        Max Price
+                      </label>
+                      <input
+                        type="number"
+                        id="max-price"
+                        min="0"
+                        max="25000"
+                        value={priceRange[1]}
+                        onChange={(e) => handlePriceChange(e, 1)}
+                        className="w-full px-3 py-1.5 text-sm border border-slate-300 dark:border-slate-700 rounded-md dark:bg-slate-900 dark:text-slate-200 placeholder-slate-400 dark:placeholder-slate-500"
+                      />
+                    </div>
+                  </div>
                 </div>
-              </div>
+              )}
             </div>
           </div>
 
           <div className="lg:w-3/4 lg:max-h-[calc(100vh-12rem)] lg:overflow-y-auto">
             {filteredProjects.length === 0 ? (
-              <div className="bg-white rounded-lg shadow-md p-10 text-center">
-                <h3 className="text-xl font-semibold text-slate-900 mb-2">No projects found</h3>
-                <p className="text-slate-600 mb-4">
+              <div className="bg-white dark:bg-slate-800 rounded-lg shadow-md p-10 text-center">
+                <h3 className="text-xl font-semibold text-slate-900 dark:text-slate-200 mb-2">No projects found</h3>
+                <p className="text-slate-600 dark:text-slate-400 mb-4">
                   Try adjusting your filters to find what you're looking for.
                 </p>
                 <button
