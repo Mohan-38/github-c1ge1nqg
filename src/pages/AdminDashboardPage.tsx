@@ -1,11 +1,16 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { 
   Briefcase, 
   MessageSquare, 
   ShoppingBag,
   ArrowUpRight,
-  IndianRupee 
+  IndianRupee,
+  TrendingUp,
+  TrendingDown,
+  BarChart3,
+  Calendar,
+  Filter
 } from 'lucide-react'; // Changed DollarSign to IndianRupee
 import { useProjects } from '../context/ProjectContext';
 import { useAuth } from '../context/AuthContext';
@@ -14,6 +19,8 @@ import AdminLayout from '../components/admin/AdminLayout';
 const AdminDashboardPage = () => {
   const { projects, inquiries, orders } = useProjects();
   const { user } = useAuth();
+  const [selectedTimeframe, setSelectedTimeframe] = useState('This Year');
+  const [hoveredMonth, setHoveredMonth] = useState<number | null>(null);
   
   // Calculate stats
   const totalRevenue = orders.reduce((sum, order) => sum + order.price, 0);
@@ -32,12 +39,37 @@ const AdminDashboardPage = () => {
   };
 
   // Generate chart data with realistic monthly progression
-  const monthlyRevenue = Array.from({ length: 12 }, (_, i) => 
-    Math.floor(Math.random() * 50000 * (i + 1) / 4)
-  );
-  const maxRevenue = Math.max(...monthlyRevenue);
+  const generateMonthlyData = (timeframe) => {
+    const baseData = Array.from({ length: 12 }, (_, i) => {
+      const baseAmount = Math.floor(Math.random() * 50000 * (i + 1) / 4);
+      return {
+        month: i,
+        amount: baseAmount,
+        orders: Math.floor(baseAmount / 15000) + Math.floor(Math.random() * 5),
+        growth: i > 0 ? ((baseAmount - (baseAmount * 0.8)) / (baseAmount * 0.8)) * 100 : 0
+      };
+    });
+    
+    return baseData;
+  };
+
+  const monthlyData = generateMonthlyData(selectedTimeframe);
+  const maxRevenue = Math.max(...monthlyData.map(d => d.amount));
   const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
   
+  // Calculate total and average for the period
+  const totalPeriodRevenue = monthlyData.reduce((sum, data) => sum + data.amount, 0);
+  const averageMonthlyRevenue = totalPeriodRevenue / 12;
+  const currentMonth = new Date().getMonth();
+  const currentMonthGrowth = monthlyData[currentMonth]?.growth || 0;
+
+  const timeframeOptions = [
+    'This Year',
+    'Last Year', 
+    'Last 6 Months',
+    'Last 3 Months'
+  ];
+
   return (
     <AdminLayout>
       <div className="px-4 sm:px-6 py-8">
@@ -94,31 +126,148 @@ const AdminDashboardPage = () => {
         
         {/* Charts and Recent Activity Section */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
-          {/* Revenue Chart */}
+          {/* Enhanced Revenue Chart */}
           <div className="bg-white dark:bg-slate-800 rounded-lg shadow-sm p-6 lg:col-span-2">
-            <div className="flex justify-between items-center mb-6">
-              <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-200">Revenue Overview (₹)</h3> {/* Added ₹ symbol */}
-              <select className="text-sm border border-slate-300 dark:border-slate-700 rounded-md px-2 py-1 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-200">
-                <option>This Year</option>
-                <option>Last Year</option>
-                <option>Last 6 Months</option>
-              </select>
+            <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center mb-6">
+              <div className="flex items-center mb-4 sm:mb-0">
+                <BarChart3 className="h-5 w-5 text-blue-600 dark:text-blue-400 mr-2" />
+                <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-200">
+                  Revenue Overview (₹)
+                </h3>
+              </div>
+              
+              <div className="flex items-center space-x-3">
+                <div className="relative">
+                  <select 
+                    value={selectedTimeframe}
+                    onChange={(e) => setSelectedTimeframe(e.target.value)}
+                    className="text-sm border border-slate-300 dark:border-slate-700 rounded-md px-3 py-2 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  >
+                    {timeframeOptions.map(option => (
+                      <option key={option} value={option}>{option}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+            </div>
+
+            {/* Revenue Summary Cards */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
+              <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm text-blue-600 dark:text-blue-400 font-medium">Total Revenue</p>
+                    <p className="text-xl font-bold text-blue-800 dark:text-blue-300">
+                      {formatINR(totalPeriodRevenue)}
+                    </p>
+                  </div>
+                  <TrendingUp className="h-8 w-8 text-blue-600 dark:text-blue-400" />
+                </div>
+              </div>
+
+              <div className="bg-green-50 dark:bg-green-900/20 rounded-lg p-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm text-green-600 dark:text-green-400 font-medium">Monthly Avg</p>
+                    <p className="text-xl font-bold text-green-800 dark:text-green-300">
+                      {formatINR(averageMonthlyRevenue)}
+                    </p>
+                  </div>
+                  <Calendar className="h-8 w-8 text-green-600 dark:text-green-400" />
+                </div>
+              </div>
+
+              <div className="bg-purple-50 dark:bg-purple-900/20 rounded-lg p-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm text-purple-600 dark:text-purple-400 font-medium">Growth</p>
+                    <p className="text-xl font-bold text-purple-800 dark:text-purple-300 flex items-center">
+                      {currentMonthGrowth >= 0 ? (
+                        <TrendingUp className="h-4 w-4 mr-1" />
+                      ) : (
+                        <TrendingDown className="h-4 w-4 mr-1" />
+                      )}
+                      {Math.abs(currentMonthGrowth).toFixed(1)}%
+                    </p>
+                  </div>
+                  <div className={`h-8 w-8 rounded-full flex items-center justify-center ${
+                    currentMonthGrowth >= 0 ? 'bg-green-100 dark:bg-green-900' : 'bg-red-100 dark:bg-red-900'
+                  }`}>
+                    {currentMonthGrowth >= 0 ? (
+                      <ArrowUpRight className="h-4 w-4 text-green-600 dark:text-green-400" />
+                    ) : (
+                      <TrendingDown className="h-4 w-4 text-red-600 dark:text-red-400" />
+                    )}
+                  </div>
+                </div>
+              </div>
             </div>
             
-            <div className="h-64 flex items-end space-x-1">
-              {monthlyRevenue.map((value, index) => {
-                const percentage = (value / maxRevenue) * 100;
+            {/* Enhanced Chart */}
+            <div className="h-64 flex items-end space-x-1 bg-slate-50 dark:bg-slate-900/50 rounded-lg p-4">
+              {monthlyData.map((data, index) => {
+                const percentage = (data.amount / maxRevenue) * 100;
+                const isHovered = hoveredMonth === index;
+                const isCurrentMonth = index === currentMonth;
+                
                 return (
-                  <div key={index} className="flex-1 flex flex-col items-center">
+                  <div key={index} className="flex-1 flex flex-col items-center relative group">
+                    {/* Tooltip */}
+                    {isHovered && (
+                      <div className="absolute bottom-full mb-2 bg-slate-800 dark:bg-slate-700 text-white text-xs rounded-lg px-3 py-2 shadow-lg z-10 whitespace-nowrap">
+                        <div className="font-medium">{months[index]} 2025</div>
+                        <div>Revenue: {formatINR(data.amount)}</div>
+                        <div>Orders: {data.orders}</div>
+                        <div>Growth: {data.growth.toFixed(1)}%</div>
+                        <div className="absolute top-full left-1/2 transform -translate-x-1/2 border-4 border-transparent border-t-slate-800 dark:border-t-slate-700"></div>
+                      </div>
+                    )}
+                    
                     <div 
-                      className="w-full bg-blue-500 rounded-t-sm hover:bg-blue-600 transition-all duration-200" 
-                      style={{ height: `${percentage}%` }}
-                      title={`${months[index]}: ${formatINR(value)}`}
-                    ></div>
-                    <div className="text-xs text-slate-600 dark:text-slate-400 mt-1">{months[index]}</div>
+                      className={`w-full rounded-t-sm transition-all duration-300 cursor-pointer ${
+                        isCurrentMonth 
+                          ? 'bg-gradient-to-t from-blue-600 to-blue-400' 
+                          : isHovered 
+                            ? 'bg-gradient-to-t from-blue-500 to-blue-300' 
+                            : 'bg-gradient-to-t from-blue-500 to-blue-400'
+                      } ${isHovered ? 'shadow-lg transform scale-105' : ''}`}
+                      style={{ height: `${Math.max(percentage, 2)}%` }}
+                      onMouseEnter={() => setHoveredMonth(index)}
+                      onMouseLeave={() => setHoveredMonth(null)}
+                      title={`${months[index]}: ${formatINR(data.amount)}`}
+                    />
+                    
+                    <div className={`text-xs mt-2 transition-colors duration-200 ${
+                      isCurrentMonth 
+                        ? 'text-blue-600 dark:text-blue-400 font-semibold' 
+                        : isHovered 
+                          ? 'text-slate-700 dark:text-slate-300' 
+                          : 'text-slate-600 dark:text-slate-400'
+                    }`}>
+                      {months[index]}
+                    </div>
+                    
+                    {/* Current month indicator */}
+                    {isCurrentMonth && (
+                      <div className="absolute -top-2 left-1/2 transform -translate-x-1/2">
+                        <div className="w-2 h-2 bg-blue-600 rounded-full animate-pulse"></div>
+                      </div>
+                    )}
                   </div>
                 );
               })}
+            </div>
+
+            {/* Chart Legend */}
+            <div className="flex items-center justify-center mt-4 space-x-6 text-sm text-slate-600 dark:text-slate-400">
+              <div className="flex items-center">
+                <div className="w-3 h-3 bg-blue-500 rounded mr-2"></div>
+                <span>Monthly Revenue</span>
+              </div>
+              <div className="flex items-center">
+                <div className="w-3 h-3 bg-blue-600 rounded mr-2"></div>
+                <span>Current Month</span>
+              </div>
             </div>
           </div>
           
@@ -127,7 +276,7 @@ const AdminDashboardPage = () => {
             <div className="flex justify-between items-center mb-6">
               <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-200">Recent Inquiries</h3>
               <Link 
-                to="/admin/inquiries"
+                to="/admin/project-requests"
                 className="text-sm text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300"
               >
                 View all
@@ -159,9 +308,9 @@ const AdminDashboardPage = () => {
           />
           
           <QuickLink 
-            to="/admin/inquiries"
-            title="View Inquiries"
-            description="Review and respond to messages"
+            to="/admin/project-requests"
+            title="Project Requests"
+            description="Review and manage project requests"
             icon={<MessageSquare className="h-6 w-6 text-amber-600 dark:text-amber-400" />}
             bgColor="amber"
           />

@@ -18,6 +18,8 @@ interface SettingsContextType {
   updateSettings: (newSettings: Partial<MarketplaceSettings>) => Promise<void>;
   loading: boolean;
   error: string | null;
+  isPortfolioMode: boolean; // Computed property for easy access
+  isMarketplaceMode: boolean; // Computed property for easy access
 }
 
 const defaultSettings: MarketplaceSettings = {
@@ -28,7 +30,7 @@ const defaultSettings: MarketplaceSettings = {
   documentAutoGeneration: true,
   showPricesOnProjects: true,
   enableCheckoutProcess: true,
-  marketplaceMode: true, // Default to marketplace mode
+  marketplaceMode: false, // Default to portfolio mode for your use case
   lastUpdated: new Date().toISOString()
 };
 
@@ -97,7 +99,7 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         lastUpdated: new Date().toISOString()
       };
 
-      // Update local state immediately
+      // Update local state immediately for real-time effect
       setSettings(updatedSettings);
 
       // Save to localStorage
@@ -124,11 +126,17 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     }
   };
 
+  // Computed properties for easy access
+  const isPortfolioMode = !settings.marketplaceMode;
+  const isMarketplaceMode = settings.marketplaceMode;
+
   const value = {
     settings,
     updateSettings,
     loading,
-    error
+    error,
+    isPortfolioMode,
+    isMarketplaceMode
   };
 
   return (
