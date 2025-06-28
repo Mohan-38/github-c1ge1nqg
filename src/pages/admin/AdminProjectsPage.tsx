@@ -9,7 +9,13 @@ import {
   ChevronDown, 
   MoreHorizontal,
   Filter,
-  FileText
+  FileText,
+  Presentation,
+  FileSpreadsheet,
+  File,
+  Package,
+  Eye,
+  BarChart3
 } from 'lucide-react';
 import { useProjects } from '../../context/ProjectContext';
 import AdminLayout from '../../components/admin/AdminLayout';
@@ -17,11 +23,13 @@ import ProjectDocumentsManager from '../../components/admin/ProjectDocumentsMana
 import { Project } from '../../types';
 
 const AdminProjectsPage = () => {
-  const { projects, addProject, updateProject, deleteProject, getProjectDocuments } = useProjects();
+  const { projects, addProject, updateProject, deleteProject, getProjectDocuments, getDocumentsByReviewStage } = useProjects();
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [isDocumentsModalOpen, setIsDocumentsModalOpen] = useState(false);
+  const [isDocumentBreakdownOpen, setIsDocumentBreakdownOpen] = useState(false);
+  const [selectedProject, setSelectedProject] = useState<Project | null>(null);
   const [currentProject, setCurrentProject] = useState<Project | null>(null);
   const [sortField, setSortField] = useState<keyof Project>('title');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
@@ -104,6 +112,44 @@ const AdminProjectsPage = () => {
   const getDocumentCount = (projectId: string): number => {
     const documents = getProjectDocuments(projectId);
     return documents.length;
+  };
+
+  // Get document breakdown by review stage
+  const getDocumentBreakdown = (projectId: string) => {
+    const reviewStages = [
+      { 
+        value: 'review_1', 
+        label: 'Review 1', 
+        description: 'Initial project review',
+        icon: FileText,
+        color: 'blue'
+      },
+      { 
+        value: 'review_2', 
+        label: 'Review 2', 
+        description: 'Mid-project assessment',
+        icon: Presentation,
+        color: 'purple'
+      },
+      { 
+        value: 'review_3', 
+        label: 'Review 3', 
+        description: 'Final review & completion',
+        icon: FileSpreadsheet,
+        color: 'green'
+      }
+    ];
+
+    return reviewStages.map(stage => ({
+      ...stage,
+      count: getDocumentsByReviewStage(projectId, stage.value).length
+    }));
+  };
+
+  // Handle document breakdown click
+  const handleDocumentBreakdownClick = (project: Project) => {
+    setSelectedProject(project);
+    setIsDocumentBreakdownOpen(true);
   };
 
   // Reset and open add modal
@@ -439,14 +485,19 @@ const AdminProjectsPage = () => {
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div className="flex items-center">
-                            <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium ${
-                              documentCount > 0 
-                                ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
-                                : 'bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-400'
-                            }`}>
+                            <button
+                              onClick={() => handleDocumentBreakdownClick(project)}
+                              className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium transition-colors hover:shadow-md ${
+                                documentCount > 0 
+                                  ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200 hover:bg-green-200 dark:hover:bg-green-800'
+                                  : 'bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-600'
+                              }`}
+                              title="Click to see document breakdown by review stage"
+                            >
                               <FileText className="h-3 w-3 mr-1" />
                               {documentCount} {documentCount === 1 ? 'doc' : 'docs'}
-                            </span>
+                              <BarChart3 className="h-3 w-3 ml-1 opacity-60" />
+                            </button>
                           </div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
@@ -509,6 +560,132 @@ const AdminProjectsPage = () => {
           </div>
         </div>
       </div>
+      
+      {/* Document Breakdown Modal */}
+      {isDocumentBreakdownOpen && selectedProject && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="p-6 border-b border-gray-200 dark:border-gray-700">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center">
+                  <Package className="h-6 w-6 text-blue-600 dark:text-blue-400 mr-3" />
+                  <div>
+                    <h3 className="text-xl font-semibold text-gray-900 dark:text-white">
+                      Document Breakdown
+                    </h3>
+                    <p className="text-sm text-gray-500 dark:text-gray-400">
+                      {selectedProject.title}
+                    </p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setIsDocumentBreakdownOpen(false)}
+                  className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+                >
+                  <X className="h-6 w-6" />
+                </button>
+              </div>
+            </div>
+
+            <div className="p-6">
+              <div className="space-y-4">
+                {getDocumentBreakdown(selectedProject.id).map((stage) => {
+                  const StageIcon = stage.icon;
+                  const stageColors = {
+                    blue: 'bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800 text-blue-800 dark:text-blue-300',
+                    purple: 'bg-purple-50 dark:bg-purple-900/20 border-purple-200 dark:border-purple-800 text-purple-800 dark:text-purple-300',
+                    green: 'bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800 text-green-800 dark:text-green-300'
+                  };
+
+                  const iconColors = {
+                    blue: 'text-blue-600 dark:text-blue-400',
+                    purple: 'text-purple-600 dark:text-purple-400',
+                    green: 'text-green-600 dark:text-green-400'
+                  };
+
+                  return (
+                    <div
+                      key={stage.value}
+                      className={`border rounded-lg p-4 ${stageColors[stage.color as keyof typeof stageColors]}`}
+                    >
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center">
+                          <StageIcon className={`h-6 w-6 mr-3 ${iconColors[stage.color as keyof typeof iconColors]}`} />
+                          <div>
+                            <h4 className="font-semibold text-gray-900 dark:text-white">
+                              {stage.label}
+                            </h4>
+                            <p className="text-sm text-gray-600 dark:text-gray-400">
+                              {stage.description}
+                            </p>
+                          </div>
+                        </div>
+                        <div className="flex items-center space-x-3">
+                          <span className={`px-3 py-1 rounded-full text-sm font-medium ${
+                            stage.count > 0 
+                              ? 'bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200'
+                              : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400'
+                          }`}>
+                            {stage.count} {stage.count === 1 ? 'document' : 'documents'}
+                          </span>
+                          {stage.count > 0 ? (
+                            <div className="flex items-center text-green-600 dark:text-green-400">
+                              <Check className="h-4 w-4" />
+                            </div>
+                          ) : (
+                            <div className="flex items-center text-gray-400">
+                              <X className="h-4 w-4" />
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* Summary */}
+              <div className="mt-6 bg-gray-50 dark:bg-gray-700 rounded-lg p-4">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center">
+                    <BarChart3 className="h-5 w-5 text-gray-600 dark:text-gray-400 mr-2" />
+                    <span className="font-medium text-gray-900 dark:text-white">Total Documents</span>
+                  </div>
+                  <span className="text-lg font-bold text-gray-900 dark:text-white">
+                    {getDocumentCount(selectedProject.id)}
+                  </span>
+                </div>
+                <div className="mt-2 text-sm text-gray-600 dark:text-gray-400">
+                  {getDocumentCount(selectedProject.id) > 0 
+                    ? 'Ready for customer delivery after purchase'
+                    : 'No documents available - customers will receive "coming soon" notification'
+                  }
+                </div>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="mt-6 flex justify-end space-x-3">
+                <button
+                  onClick={() => {
+                    setIsDocumentBreakdownOpen(false);
+                    openDocumentsModal(selectedProject);
+                  }}
+                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center"
+                >
+                  <FileText className="h-4 w-4 mr-2" />
+                  Manage Documents
+                </button>
+                <button
+                  onClick={() => setIsDocumentBreakdownOpen(false)}
+                  className="px-4 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+                >
+                  Close
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
       
       {/* Add Project Modal */}
       {isAddModalOpen && (
