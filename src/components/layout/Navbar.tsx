@@ -110,16 +110,6 @@ const Navbar = () => {
                         Manage Projects
                       </Link>
                       <Link 
-                        to="/admin/inquiries" 
-                        className="block px-4 py-2 text-sm text-gray-700 dark:text-slate-200 hover:bg-gray-100 dark:hover:bg-slate-700"
-                        onClick={() => {
-                          closeMenu();
-                          setIsAdminMenuOpen(false);
-                        }}
-                      >
-                        Inquiries
-                      </Link>
-                      <Link 
                         to="/admin/orders" 
                         className="block px-4 py-2 text-sm text-gray-700 dark:text-slate-200 hover:bg-gray-100 dark:hover:bg-slate-700"
                         onClick={() => {
@@ -234,13 +224,6 @@ const Navbar = () => {
                     onClick={closeMenu}
                   >
                     Manage Projects
-                  </Link>
-                  <Link 
-                    to="/admin/inquiries" 
-                    className="text-base font-medium text-white hover:text-blue-400"
-                    onClick={closeMenu}
-                  >
-                    Inquiries
                   </Link>
                   <Link 
                     to="/admin/orders" 

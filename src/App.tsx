@@ -11,7 +11,6 @@ import AdminLoginPage from './pages/AdminLoginPage';
 import AdminDashboardPage from './pages/AdminDashboardPage';
 import AdminProjectsPage from './pages/admin/AdminProjectsPage';
 import AdminProjectRequestsPage from './pages/admin/AdminProjectRequestsPage';
-import AdminInquiriesPage from './pages/admin/AdminInquiriesPage';
 import AdminOrdersPage from './pages/admin/AdminOrdersPage';
 import AdminSettingsPage from './pages/admin/AdminSettingsPage';
 import SecureDownloadPage from './pages/SecureDownloadPage';
@@ -61,14 +60,6 @@ function App() {
                       element={
                         <ProtectedRoute>
                           <AdminProjectsPage />
-                        </ProtectedRoute>
-                      } 
-                    />
-                    <Route 
-                      path="/admin/inquiries" 
-                      element={
-                        <ProtectedRoute>
-                          <AdminInquiriesPage />
                         </ProtectedRoute>
                       } 
                     />

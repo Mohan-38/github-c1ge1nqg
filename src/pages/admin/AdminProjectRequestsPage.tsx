@@ -22,7 +22,8 @@ import {
   TrendingUp,
   Edit,
   Save,
-  X
+  X,
+  Download
 } from 'lucide-react';
 import AdminLayout from '../../components/admin/AdminLayout';
 import { useProjects } from '../../context/ProjectContext';
@@ -51,6 +52,7 @@ const AdminProjectRequestsPage = () => {
   const [isUpdating, setIsUpdating] = useState(false);
   const [isConverting, setIsConverting] = useState(false);
   const [adminNotes, setAdminNotes] = useState('');
+  const [selectedRequests, setSelectedRequests] = useState<string[]>([]);
 
   // Project conversion form state
   const [projectFormData, setProjectFormData] = useState<Omit<Project, 'id'>>({
@@ -147,6 +149,83 @@ const AdminProjectRequestsPage = () => {
     };
 
     return colorMap[priorityConfig.color as keyof typeof colorMap] || colorMap.blue;
+  };
+
+  // Get project type color
+  const getProjectTypeColor = (projectType: string) => {
+    switch (projectType.toLowerCase()) {
+      case 'iot':
+        return 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300';
+      case 'blockchain':
+        return 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-300';
+      case 'web':
+        return 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300';
+      case 'mobile':
+        return 'bg-indigo-100 text-indigo-800 dark:bg-indigo-900 dark:text-indigo-300';
+      default:
+        return 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-300';
+    }
+  };
+
+  // Handle checkbox selection
+  const handleSelect = (id: string) => {
+    if (selectedRequests.includes(id)) {
+      setSelectedRequests(selectedRequests.filter(selectedId => selectedId !== id));
+    } else {
+      setSelectedRequests([...selectedRequests, id]);
+    }
+  };
+
+  // Handle select/deselect all
+  const handleSelectAll = () => {
+    if (selectedRequests.length === filteredRequests.length) {
+      setSelectedRequests([]);
+    } else {
+      setSelectedRequests(filteredRequests.map(request => request.id));
+    }
+  };
+
+  // Export selected requests as CSV
+  const exportAsCSV = () => {
+    if (selectedRequests.length === 0) return;
+    
+    const selectedData = projectRequests.filter(request => selectedRequests.includes(request.id));
+    
+    // Create CSV header
+    let csv = 'Customer Name,Email,Phone,Project Title,Project Type,Budget Range,Priority,Status,Description,Requirements,Timeline,Created Date,Updated Date\n';
+    
+    // Add rows
+    selectedData.forEach(request => {
+      const createdDate = formatDate(request.created_at);
+      const updatedDate = formatDate(request.updated_at);
+      const escapedDescription = `"${request.description?.replace(/"/g, '""') || ''}"`;
+      const escapedRequirements = `"${request.requirements?.replace(/"/g, '""') || ''}"`;
+      const escapedName = `"${request.customer_name?.replace(/"/g, '""') || ''}"`;
+      const escapedTitle = `"${request.project_title?.replace(/"/g, '""') || ''}"`;
+      
+      csv += `${escapedName},${request.customer_email || ''},${request.customer_phone || ''},${escapedTitle},${request.project_type || ''},${request.budget_range || ''},${request.priority || ''},${request.status || ''},${escapedDescription},${escapedRequirements},${request.timeline || ''},${createdDate},${updatedDate}\n`;
+    });
+    
+    // Create download link with UTF-8 BOM for Excel compatibility
+    const BOM = '\uFEFF';
+    const blob = new Blob([BOM + csv], { type: 'text/csv;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `project-requests-${new Date().toISOString().split('T')[0]}.csv`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  // Send email to selected requests
+  const sendEmail = () => {
+    if (selectedRequests.length === 0) return;
+    
+    const selectedData = projectRequests.filter(request => selectedRequests.includes(request.id));
+    const emailAddresses = selectedData.map(request => request.customer_email).join(',');
+    
+    window.open(`mailto:${emailAddresses}`);
   };
 
   const handleStatusUpdate = async (requestId: string, newStatus: string) => {
@@ -362,6 +441,32 @@ const AdminProjectRequestsPage = () => {
             </div>
 
             <div className="flex space-x-2">
+              <button
+                onClick={exportAsCSV}
+                disabled={selectedRequests.length === 0}
+                className={`inline-flex items-center px-3 py-2 border rounded-md text-sm font-medium ${
+                  selectedRequests.length > 0
+                    ? 'border-blue-600 text-blue-600 hover:bg-blue-50 dark:hover:bg-slate-700'
+                    : 'border-slate-300 text-slate-400 cursor-not-allowed dark:border-slate-700 dark:text-slate-500'
+                }`}
+              >
+                <Download className="h-4 w-4 mr-2" />
+                Export ({selectedRequests.length})
+              </button>
+              
+              <button
+                onClick={sendEmail}
+                disabled={selectedRequests.length === 0}
+                className={`inline-flex items-center px-3 py-2 border rounded-md text-sm font-medium ${
+                  selectedRequests.length > 0
+                    ? 'border-green-600 text-green-600 hover:bg-green-50 dark:hover:bg-slate-700'
+                    : 'border-slate-300 text-slate-400 cursor-not-allowed dark:border-slate-700 dark:text-slate-500'
+                }`}
+              >
+                <Mail className="h-4 w-4 mr-2" />
+                Email ({selectedRequests.length})
+              </button>
+
               <div className="relative group">
                 <button className="inline-flex items-center px-3 py-2 border border-slate-300 dark:border-slate-700 rounded-md text-sm font-medium text-slate-700 dark:text-slate-200 bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-700">
                   <Filter className="h-4 w-4 mr-2" />
@@ -432,6 +537,16 @@ const AdminProjectRequestsPage = () => {
                 <thead className="bg-slate-50 dark:bg-slate-900">
                   <tr>
                     <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+                      <div className="flex items-center">
+                        <input
+                          type="checkbox"
+                          checked={selectedRequests.length === filteredRequests.length && filteredRequests.length > 0}
+                          onChange={handleSelectAll}
+                          className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-slate-300 dark:border-slate-700 rounded"
+                        />
+                      </div>
+                    </th>
+                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">
                       Customer
                     </th>
                     <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">
@@ -460,6 +575,14 @@ const AdminProjectRequestsPage = () => {
                     return (
                       <tr key={request.id} className="hover:bg-slate-50 dark:hover:bg-slate-700">
                         <td className="px-6 py-4 whitespace-nowrap">
+                          <input
+                            type="checkbox"
+                            checked={selectedRequests.includes(request.id)}
+                            onChange={() => handleSelect(request.id)}
+                            className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-slate-300 dark:border-slate-700 rounded"
+                          />
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
                           <div className="flex items-center">
                             <User className="h-8 w-8 text-slate-400 mr-3" />
                             <div>
@@ -476,7 +599,13 @@ const AdminProjectRequestsPage = () => {
                         <td className="px-6 py-4">
                           <div>
                             <div className="text-sm font-medium text-slate-900 dark:text-slate-200">{request.project_title}</div>
-                            <div className="text-sm text-slate-500 dark:text-slate-400">{request.project_type} • {request.budget_range}</div>
+                            <div className="flex items-center space-x-2 mt-1">
+                              <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getProjectTypeColor(request.project_type)}`}>
+                                {request.project_type}
+                              </span>
+                              <span className="text-sm text-slate-500 dark:text-slate-400">•</span>
+                              <span className="text-sm text-slate-500 dark:text-slate-400">{request.budget_range}</span>
+                            </div>
                           </div>
                         </td>
                         
@@ -610,7 +739,9 @@ const AdminProjectRequestsPage = () => {
                     
                     <div>
                       <label className="text-sm font-medium text-slate-600 dark:text-slate-400">Type</label>
-                      <p className="text-slate-900 dark:text-slate-200">{selectedRequest.project_type}</p>
+                      <span className={`inline-flex items-center px-2.5 py-1.5 rounded-full text-xs font-medium ml-2 ${getProjectTypeColor(selectedRequest.project_type)}`}>
+                        {selectedRequest.project_type}
+                      </span>
                     </div>
                     
                     <div className="flex items-center space-x-4">

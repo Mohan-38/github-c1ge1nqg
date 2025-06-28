@@ -36,6 +36,22 @@ const AdminInquiriesPage = () => {
       return 'Invalid Date';
     }
   };
+
+  // Get project type color
+  const getProjectTypeColor = (projectType: string) => {
+    switch (projectType.toLowerCase()) {
+      case 'iot':
+        return 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300';
+      case 'blockchain':
+        return 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-300';
+      case 'web':
+        return 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300';
+      case 'mobile':
+        return 'bg-indigo-100 text-indigo-800 dark:bg-indigo-900 dark:text-indigo-300';
+      default:
+        return 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-300';
+    }
+  };
   
   // Open delete confirmation modal
   const openDeleteModal = (inquiry: Inquiry) => {
@@ -151,7 +167,7 @@ const AdminInquiriesPage = () => {
                 }`}
               >
                 <Download className="h-4 w-4 mr-2" />
-                Export
+                Export ({selectedInquiries.length})
               </button>
               
               <button
@@ -164,7 +180,7 @@ const AdminInquiriesPage = () => {
                 }`}
               >
                 <Mail className="h-4 w-4 mr-2" />
-                Email
+                Email ({selectedInquiries.length})
               </button>
             </div>
           </div>
@@ -235,13 +251,7 @@ const AdminInquiriesPage = () => {
                       <td className="px-6 py-4">
                         <div className="flex flex-col">
                           <div className="flex space-x-2 mb-1">
-                            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                              inquiry.project_type?.toLowerCase() === 'iot' 
-                                ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300' 
-                                : inquiry.project_type?.toLowerCase() === 'blockchain'
-                                  ? 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-300'
-                                  : 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300'
-                            }`}>
+                            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getProjectTypeColor(inquiry.project_type)}`}>
                               {inquiry.project_type}
                             </span>
                             
