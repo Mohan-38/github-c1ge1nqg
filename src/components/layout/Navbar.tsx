@@ -130,16 +130,6 @@ const Navbar = () => {
                         Orders
                       </Link>
                       <Link 
-                        to="/admin/document-delivery" 
-                        className="block px-4 py-2 text-sm text-gray-700 dark:text-slate-200 hover:bg-gray-100 dark:hover:bg-slate-700"
-                        onClick={() => {
-                          closeMenu();
-                          setIsAdminMenuOpen(false);
-                        }}
-                      >
-                        Document Delivery
-                      </Link>
-                      <Link 
                         to="/admin/settings" 
                         className="block px-4 py-2 text-sm text-gray-700 dark:text-slate-200 hover:bg-gray-100 dark:hover:bg-slate-700"
                         onClick={() => {
@@ -258,13 +248,6 @@ const Navbar = () => {
                     onClick={closeMenu}
                   >
                     Orders
-                  </Link>
-                  <Link 
-                    to="/admin/document-delivery" 
-                    className="text-base font-medium text-white hover:text-blue-400"
-                    onClick={closeMenu}
-                  >
-                    Document Delivery
                   </Link>
                   <Link 
                     to="/admin/settings" 
