@@ -1,11 +1,11 @@
 import React, { useState } from 'react';
-import { Mail, Download, Search, Calendar, ChevronDown, Filter, Trash2, AlertCircle } from 'lucide-react';
+import { Mail, Download, Search, Calendar, ChevronDown, Filter, Trash2, AlertCircle, Eye, Upload, Send } from 'lucide-react';
 import AdminLayout from '../../components/admin/AdminLayout';
 import { useProjects } from '../../context/ProjectContext';
 import { Order } from '../../types';
 
 const AdminOrdersPage = () => {
-  const { orders, updateOrderStatus, deleteOrder } = useProjects();
+  const { orders, updateOrderStatus, deleteOrder, getProjectDocuments, addProjectDocument, sendSecureProjectDocuments } = useProjects();
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string | null>(null);
   const [selectedOrders, setSelectedOrders] = useState<string[]>([]);
@@ -15,6 +15,10 @@ const AdminOrdersPage = () => {
   const [showStatusDropdown, setShowStatusDropdown] = useState<string | null>(null);
   const [isUpdating, setIsUpdating] = useState(false);
   const [updateError, setUpdateError] = useState<string | null>(null);
+  const [showDetailsModal, setShowDetailsModal] = useState(false);
+  const [showUploadModal, setShowUploadModal] = useState(false);
+  const [showSendModal, setShowSendModal] = useState(false);
+  const [isSending, setIsSending] = useState(false);
 
   // Format date helper function
   const formatDate = (dateString: string | undefined) => {
@@ -34,13 +38,25 @@ const AdminOrdersPage = () => {
     }
   };
 
-  // Format price in Indian Rupees
+  // Format price in Indian Rupees with color coding
   const formatPrice = (price: number) => {
-    return new Intl.NumberFormat('en-IN', {
+    const formatted = new Intl.NumberFormat('en-IN', {
       style: 'currency',
       currency: 'INR',
       maximumFractionDigits: 0
     }).format(price);
+
+    // Color coding based on price ranges
+    let colorClass = '';
+    if (price >= 100000) {
+      colorClass = 'text-green-600 dark:text-green-400 font-bold'; // High value
+    } else if (price >= 50000) {
+      colorClass = 'text-blue-600 dark:text-blue-400 font-semibold'; // Medium value
+    } else {
+      colorClass = 'text-orange-600 dark:text-orange-400'; // Lower value
+    }
+
+    return { formatted, colorClass };
   };
 
   // Filter orders based on search term and status
@@ -114,6 +130,38 @@ const AdminOrdersPage = () => {
     }
   };
 
+  // Open details modal
+  const openDetailsModal = (order: Order) => {
+    setCurrentOrder(order);
+    setShowDetailsModal(true);
+  };
+
+  // Open upload modal
+  const openUploadModal = (order: Order) => {
+    setCurrentOrder(order);
+    setShowUploadModal(true);
+  };
+
+  // Open send modal
+  const openSendModal = (order: Order) => {
+    setCurrentOrder(order);
+    setShowSendModal(true);
+  };
+
+  // Handle send documents
+  const handleSendDocuments = async (order: Order) => {
+    setIsSending(true);
+    try {
+      await sendSecureProjectDocuments(order.id, order.customer_email || order.customerEmail, order.customer_name || order.customerName, true);
+      alert('Documents sent successfully!');
+    } catch (error) {
+      console.error('Error sending documents:', error);
+      alert('Failed to send documents. Please try again.');
+    } finally {
+      setIsSending(false);
+    }
+  };
+
   // Export selected orders as CSV
   const exportAsCSV = () => {
     if (selectedOrders.length === 0) return;
@@ -125,8 +173,9 @@ const AdminOrdersPage = () => {
       const formattedDate = formatDate(order.created_at);
       const escapedName = `"${order.customer_name?.replace(/"/g, '""') || ''}"`;
       const escapedTitle = `"${order.project_title?.replace(/"/g, '""') || ''}"`;
+      const { formatted: priceFormatted } = formatPrice(order.price);
       
-      csv += `${escapedName},${order.customer_email || ''},${escapedTitle},${formatPrice(order.price) || ''},${order.status || ''},${formattedDate}\n`;
+      csv += `${escapedName},${order.customer_email || ''},${escapedTitle},${priceFormatted},${order.status || ''},${formattedDate}\n`;
     });
 
     // Add UTF-8 BOM for Excel compatibility
@@ -141,7 +190,7 @@ const AdminOrdersPage = () => {
     document.body.removeChild(link);
   };
 
-  // Get status badge styling
+  // Get status badge styling with color indicators
   const getStatusBadge = (status: string) => {
     switch (status.toLowerCase()) {
       case 'completed':
@@ -157,8 +206,9 @@ const AdminOrdersPage = () => {
     }
   };
 
-  // Calculate total revenue
+  // Calculate total revenue with color coding
   const totalRevenue = filteredOrders.reduce((sum, order) => sum + parseFloat(order.price.toString()), 0);
+  const { formatted: totalRevenueFormatted, colorClass: totalRevenueColor } = formatPrice(totalRevenue);
 
   // Status options
   const statusOptions = ['pending', 'processing', 'completed', 'cancelled'];
@@ -182,26 +232,26 @@ const AdminOrdersPage = () => {
           </div>
         )}
 
-        {/* Stats Cards */}
+        {/* Stats Cards with Color Indicators */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
           <div className="bg-white dark:bg-slate-800 rounded-lg shadow-sm p-6">
             <div className="flex flex-col">
               <p className="text-sm font-medium text-slate-500 dark:text-slate-400 mb-1">Total Orders</p>
-              <h3 className="text-2xl font-bold text-slate-900 dark:text-slate-200">{orders.length}</h3>
+              <h3 className="text-2xl font-bold text-blue-600 dark:text-blue-400">{orders.length}</h3>
             </div>
           </div>
 
           <div className="bg-white dark:bg-slate-800 rounded-lg shadow-sm p-6">
             <div className="flex flex-col">
               <p className="text-sm font-medium text-slate-500 dark:text-slate-400 mb-1">Total Revenue</p>
-              <h3 className="text-2xl font-bold text-slate-900 dark:text-slate-200">{formatPrice(totalRevenue)}</h3>
+              <h3 className={`text-2xl font-bold ${totalRevenueColor}`}>{totalRevenueFormatted}</h3>
             </div>
           </div>
 
           <div className="bg-white dark:bg-slate-800 rounded-lg shadow-sm p-6">
             <div className="flex flex-col">
               <p className="text-sm font-medium text-slate-500 dark:text-slate-400 mb-1">Pending Orders</p>
-              <h3 className="text-2xl font-bold text-slate-900 dark:text-slate-200">
+              <h3 className="text-2xl font-bold text-yellow-600 dark:text-yellow-400">
                 {orders.filter(order => order.status === 'pending').length}
               </h3>
             </div>
@@ -210,7 +260,7 @@ const AdminOrdersPage = () => {
           <div className="bg-white dark:bg-slate-800 rounded-lg shadow-sm p-6">
             <div className="flex flex-col">
               <p className="text-sm font-medium text-slate-500 dark:text-slate-400 mb-1">Completed Orders</p>
-              <h3 className="text-2xl font-bold text-slate-900 dark:text-slate-200">
+              <h3 className="text-2xl font-bold text-green-600 dark:text-green-400">
                 {orders.filter(order => order.status === 'completed').length}
               </h3>
             </div>
@@ -326,85 +376,115 @@ const AdminOrdersPage = () => {
                   </tr>
                 </thead>
                 <tbody className="bg-white dark:bg-slate-800 divide-y divide-slate-200 dark:divide-slate-700">
-                  {filteredOrders.map((order) => (
-                    <tr key={order.id} className="hover:bg-slate-50 dark:hover:bg-slate-700">
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <input
-                          type="checkbox"
-                          checked={selectedOrders.includes(order.id)}
-                          onChange={() => handleSelect(order.id)}
-                          className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-slate-300 dark:border-slate-700 rounded"
-                        />
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm font-medium text-slate-900 dark:text-slate-200">{order.customer_name}</div>
-                        <div className="text-sm text-blue-600 dark:text-blue-400">
-                          <a href={`mailto:${order.customer_email}`} className="hover:underline">
-                            {order.customer_email}
-                          </a>
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm text-slate-900 dark:text-slate-200">{order.project_title}</div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm font-medium text-slate-900 dark:text-slate-200">{formatPrice(order.price)}</div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="relative">
-                          <button
-                            onClick={() => setShowStatusDropdown(showStatusDropdown === order.id ? null : order.id)}
-                            className={`inline-flex items-center px-2.5 py-1.5 rounded-full text-xs font-medium ${getStatusBadge(order.status)}`}
-                            disabled={isUpdating}
-                          >
-                            {order.status}
-                            <ChevronDown className="ml-1 h-4 w-4" />
-                          </button>
+                  {filteredOrders.map((order) => {
+                    const { formatted: priceFormatted, colorClass: priceColor } = formatPrice(order.price);
+                    const documentsCount = getProjectDocuments(order.projectId).length;
+                    
+                    return (
+                      <tr key={order.id} className="hover:bg-slate-50 dark:hover:bg-slate-700">
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <input
+                            type="checkbox"
+                            checked={selectedOrders.includes(order.id)}
+                            onChange={() => handleSelect(order.id)}
+                            className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-slate-300 dark:border-slate-700 rounded"
+                          />
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="text-sm font-medium text-slate-900 dark:text-slate-200">{order.customer_name}</div>
+                          <div className="text-sm text-blue-600 dark:text-blue-400">
+                            <a href={`mailto:${order.customer_email}`} className="hover:underline">
+                              {order.customer_email}
+                            </a>
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="text-sm text-slate-900 dark:text-slate-200">{order.project_title}</div>
+                          <div className="text-sm text-slate-500 dark:text-slate-400">
+                            {documentsCount} documents available
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className={`text-sm font-medium ${priceColor}`}>{priceFormatted}</div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="relative">
+                            <button
+                              onClick={() => setShowStatusDropdown(showStatusDropdown === order.id ? null : order.id)}
+                              className={`inline-flex items-center px-2.5 py-1.5 rounded-full text-xs font-medium ${getStatusBadge(order.status)}`}
+                              disabled={isUpdating}
+                            >
+                              {order.status}
+                              <ChevronDown className="ml-1 h-4 w-4" />
+                            </button>
 
-                          {showStatusDropdown === order.id && (
-                            <div className="absolute z-10 mt-1 w-48 bg-white dark:bg-slate-800 rounded-md shadow-lg">
-                              {statusOptions.map((status) => (
-                                <button
-                                  key={status}
-                                  onClick={() => handleStatusUpdate(order.id, status)}
-                                  disabled={isUpdating}
-                                  className={`block w-full text-left px-4 py-2 text-sm ${
-                                    order.status === status
-                                      ? 'bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300'
-                                      : 'text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700'
-                                  }`}
-                                >
-                                  {status.charAt(0).toUpperCase() + status.slice(1)}
-                                </button>
-                              ))}
-                            </div>
-                          )}
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="flex items-center text-sm text-slate-500 dark:text-slate-400">
-                          <Calendar className="h-4 w-4 mr-1" />
-                          {formatDate(order.created_at)}
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="flex items-center space-x-2">
-                          <a
-                            href={`mailto:${order.customer_email}`}
-                            className="text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 p-1"
-                          >
-                            <Mail className="h-4 w-4" />
-                          </a>
-                          <button
-                            onClick={() => openDeleteModal(order)}
-                            className="text-red-600 dark:text-red-500 hover:text-red-800 dark:hover:text-red-400 p-1"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
+                            {showStatusDropdown === order.id && (
+                              <div className="absolute z-10 mt-1 w-48 bg-white dark:bg-slate-800 rounded-md shadow-lg">
+                                {statusOptions.map((status) => (
+                                  <button
+                                    key={status}
+                                    onClick={() => handleStatusUpdate(order.id, status)}
+                                    disabled={isUpdating}
+                                    className={`block w-full text-left px-4 py-2 text-sm ${
+                                      order.status === status
+                                        ? 'bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300'
+                                        : 'text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700'
+                                    }`}
+                                  >
+                                    {status.charAt(0).toUpperCase() + status.slice(1)}
+                                  </button>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="flex items-center text-sm text-slate-500 dark:text-slate-400">
+                            <Calendar className="h-4 w-4 mr-1" />
+                            {formatDate(order.created_at)}
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="flex items-center space-x-2">
+                            <button
+                              onClick={() => openDetailsModal(order)}
+                              className="p-2 text-blue-600 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-900 rounded-lg transition-colors"
+                              title="View details"
+                            >
+                              <Eye className="h-4 w-4" />
+                            </button>
+                            
+                            <button
+                              onClick={() => openUploadModal(order)}
+                              className="p-2 text-orange-600 dark:text-orange-400 hover:bg-orange-100 dark:hover:bg-orange-900 rounded-lg transition-colors"
+                              title="Upload documents"
+                            >
+                              <Upload className="h-4 w-4" />
+                            </button>
+                            
+                            {documentsCount > 0 && (
+                              <button
+                                onClick={() => handleSendDocuments(order)}
+                                disabled={isSending}
+                                className="p-2 text-green-600 dark:text-green-400 hover:bg-green-100 dark:hover:bg-green-900 rounded-lg transition-colors"
+                                title="Send documents"
+                              >
+                                <Send className="h-4 w-4" />
+                              </button>
+                            )}
+                            
+                            <button
+                              onClick={() => openDeleteModal(order)}
+                              className="p-2 text-red-600 dark:text-red-500 hover:bg-red-100 dark:hover:bg-red-900 rounded-lg transition-colors"
+                              title="Delete order"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
@@ -451,6 +531,50 @@ const AdminOrdersPage = () => {
                   'Delete'
                 )}
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Details Modal - Simplified version */}
+      {showDetailsModal && currentOrder && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white dark:bg-slate-800 rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="p-6 border-b border-slate-200 dark:border-slate-700">
+              <div className="flex items-center justify-between">
+                <h3 className="text-xl font-semibold text-slate-900 dark:text-slate-200">
+                  Order Details
+                </h3>
+                <button
+                  onClick={() => setShowDetailsModal(false)}
+                  className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-300"
+                >
+                  ×
+                </button>
+              </div>
+            </div>
+
+            <div className="p-6">
+              <div className="space-y-4">
+                <div className="bg-slate-50 dark:bg-slate-700 p-4 rounded-lg">
+                  <h4 className="font-medium text-slate-900 dark:text-slate-200 mb-2">Order Information</h4>
+                  <p><strong>Order ID:</strong> {currentOrder.id}</p>
+                  <p><strong>Customer:</strong> {currentOrder.customer_name}</p>
+                  <p><strong>Email:</strong> {currentOrder.customer_email}</p>
+                  <p><strong>Project:</strong> {currentOrder.project_title}</p>
+                  <p><strong>Status:</strong> {currentOrder.status}</p>
+                  <p><strong>Date:</strong> {formatDate(currentOrder.created_at)}</p>
+                </div>
+              </div>
+
+              <div className="mt-6 flex justify-end">
+                <button
+                  onClick={() => setShowDetailsModal(false)}
+                  className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+                >
+                  Close
+                </button>
+              </div>
             </div>
           </div>
         </div>

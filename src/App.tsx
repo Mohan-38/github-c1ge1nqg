@@ -14,7 +14,6 @@ import AdminProjectRequestsPage from './pages/admin/AdminProjectRequestsPage';
 import AdminInquiriesPage from './pages/admin/AdminInquiriesPage';
 import AdminOrdersPage from './pages/admin/AdminOrdersPage';
 import AdminDocumentDeliveryPage from './pages/admin/AdminDocumentDeliveryPage';
-import AdminDocumentStatusPage from './pages/admin/AdminDocumentStatusPage';
 import AdminSettingsPage from './pages/admin/AdminSettingsPage';
 import SecureDownloadPage from './pages/SecureDownloadPage';
 import ProtectedRoute from './components/auth/ProtectedRoute';
@@ -87,14 +86,6 @@ function App() {
                       element={
                         <ProtectedRoute>
                           <AdminDocumentDeliveryPage />
-                        </ProtectedRoute>
-                      } 
-                    />
-                    <Route 
-                      path="/admin/document-status" 
-                      element={
-                        <ProtectedRoute>
-                          <AdminDocumentStatusPage />
                         </ProtectedRoute>
                       } 
                     />
