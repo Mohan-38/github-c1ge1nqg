@@ -8,7 +8,7 @@ import { Project } from '../types';
 
 const ProjectsPage = () => {
   const { projects } = useProjects();
-  const { isPortfolioMode } = useSettings();
+  const { isPortfolioMode, settings } = useSettings();
   const [searchParams, setSearchParams] = useSearchParams();
   const [filteredProjects, setFilteredProjects] = useState<Project[]>([]);
   const [searchTerm, setSearchTerm] = useState('');

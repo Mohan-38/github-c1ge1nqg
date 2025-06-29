@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { 
   ArrowLeft, 
@@ -26,28 +26,13 @@ import {
 import { useProjects } from '../context/ProjectContext';
 import { useSettings } from '../context/SettingsContext';
 
-export default function ProjectDetailPage() {
+const ProjectDetailPage = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { projects, getDocumentsByReviewStage } = useProjects();
-  const { isPortfolioMode, settings, refreshSettings } = useSettings();
+  const { isPortfolioMode, settings } = useSettings();
   const project = projects.find(p => p.id === id);
   const [expandedReviewStage, setExpandedReviewStage] = useState<string | null>(null);
-  
-  // Force refresh settings when component mounts to ensure latest state
-  useEffect(() => {
-    refreshSettings();
-  }, [refreshSettings]);
-
-  // Debug logging to track settings changes
-  useEffect(() => {
-    console.log('🔍 ProjectDetailPage - Settings State:', {
-      isPortfolioMode,
-      marketplaceMode: settings.marketplaceMode,
-      enableCheckoutProcess: settings.enableCheckoutProcess,
-      showPricesOnProjects: settings.showPricesOnProjects
-    });
-  }, [isPortfolioMode, settings]);
   
   if (!project) {
     return (
@@ -91,7 +76,6 @@ export default function ProjectDetailPage() {
   }).format(project.price);
 
   const handlePurchaseClick = () => {
-    console.log('🛒 Purchase button clicked - navigating to checkout');
     navigate(`/checkout/${project.id}`);
   };
 
@@ -178,21 +162,6 @@ export default function ProjectDetailPage() {
             </div>
           </div>
         )}
-
-        {/* Marketplace Mode Banner */}
-        {!isPortfolioMode && (
-          <div className="mb-6 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg p-4">
-            <div className="flex items-center">
-              <ShoppingCart className="h-5 w-5 text-green-600 dark:text-green-400 mr-3" />
-              <div>
-                <h3 className="font-medium text-green-800 dark:text-green-300">Marketplace Mode</h3>
-                <p className="text-green-700 dark:text-green-400 text-sm">
-                  Full e-commerce functionality enabled. Purchase this project with complete documentation and support.
-                </p>
-              </div>
-            </div>
-          </div>
-        )}
         
         <div className="bg-white dark:bg-slate-800 rounded-lg shadow-md overflow-hidden">
           {/* Project Image */}
@@ -217,15 +186,10 @@ export default function ProjectDetailPage() {
                 </span>
               )}
 
-              {isPortfolioMode ? (
+              {isPortfolioMode && (
                 <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-blue-100 dark:bg-blue-700 text-blue-800 dark:text-blue-200">
                   <Eye className="mr-1.5 h-4 w-4" />
                   Portfolio
-                </span>
-              ) : (
-                <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-green-100 dark:bg-green-700 text-green-800 dark:text-green-200">
-                  <ShoppingCart className="mr-1.5 h-4 w-4" />
-                  Marketplace
                 </span>
               )}
             </div>
@@ -489,17 +453,16 @@ export default function ProjectDetailPage() {
                 </div>
               </div>
               
-              {/* Project Action Card - FULL MARKETPLACE FUNCTIONALITY RESTORED */}
+              {/* Project Action Card - Modified for Portfolio Mode */}
               <div className="lg:w-1/3">
                 <div className="bg-slate-50 dark:bg-slate-900 rounded-lg p-6 shadow-sm sticky top-24">
-                  {/* Price Display - Show in Marketplace Mode */}
+                  {/* Price Display - Conditional */}
                   {!isPortfolioMode && settings.showPricesOnProjects && (
                     <div className="text-3xl font-bold text-slate-900 dark:text-slate-200 mb-4">
                       {formattedPrice}
                     </div>
                   )}
 
-                  {/* Portfolio Mode Header */}
                   {isPortfolioMode && (
                     <div className="mb-4">
                       <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-200 mb-2">
@@ -511,10 +474,9 @@ export default function ProjectDetailPage() {
                     </div>
                   )}
                   
-                  {/* Action Buttons - FULL MARKETPLACE FUNCTIONALITY */}
+                  {/* Action Buttons - Conditional */}
                   {!isPortfolioMode && settings.enableCheckoutProcess ? (
                     <>
-                      {/* MARKETPLACE MODE: Purchase + Customization Buttons */}
                       <button 
                         onClick={handlePurchaseClick}
                         className="w-full mb-4 inline-flex items-center justify-center px-5 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors duration-200"
@@ -532,7 +494,6 @@ export default function ProjectDetailPage() {
                       </Link>
                     </>
                   ) : (
-                    /* PORTFOLIO MODE: Single Contact Button */
                     <Link 
                       to="/contact" 
                       className="w-full inline-flex items-center justify-center px-5 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors duration-200"
@@ -551,25 +512,12 @@ export default function ProjectDetailPage() {
                         </p>
                         <ul className="list-disc list-inside space-y-1 pl-1">
                           <li>Complete source code</li>
-                          {!isPortfolioMode ? (
-                            /* MARKETPLACE MODE: Detailed List */
-                            <>
-                              <li>Documentation across 3 review stages</li>
-                              <li>Installation guide</li>
-                              <li>Technical specifications</li>
-                              <li>Project presentations</li>
-                              <li>Email support</li>
-                            </>
-                          ) : (
-                            /* PORTFOLIO MODE: Custom Development Focus */
-                            <>
-                              <li>Documentation across 3 review stages</li>
-                              <li>Installation guide</li>
-                              <li>Technical specifications</li>
-                              <li>Project presentations</li>
-                              <li>Custom development consultation</li>
-                            </>
-                          )}
+                          <li>Documentation across 3 review stages</li>
+                          <li>Installation guide</li>
+                          <li>Technical specifications</li>
+                          <li>Project presentations</li>
+                          {!isPortfolioMode && <li>Email support</li>}
+                          {isPortfolioMode && <li>Custom development consultation</li>}
                         </ul>
                       </div>
                     </div>
@@ -588,10 +536,7 @@ export default function ProjectDetailPage() {
                         }`}>
                           <Package className="h-4 w-4 mr-2" />
                           <span className="text-sm font-medium">
-                            {!isPortfolioMode 
-                              ? `${allDocuments} documents ready for delivery`
-                              : `${allDocuments} documents showcase available`
-                            }
+                            {allDocuments} documents {isPortfolioMode ? 'showcase available' : 'ready for delivery'}
                           </span>
                         </div>
                       </div>
@@ -605,4 +550,6 @@ export default function ProjectDetailPage() {
       </div>
     </div>
   );
-}
+};
+
+export default ProjectDetailPage;

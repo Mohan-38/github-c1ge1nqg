@@ -31,9 +31,6 @@ const ProjectCard: React.FC<ProjectCardProps> = ({ project }) => {
     maximumFractionDigits: 0
   }).format(project.price);
 
-  // Determine which page to link to based on mode
-  const projectLink = isPortfolioMode ? `/projects/${project.id}` : `/marketplace/${project.id}`;
-
   return (
     <div className="bg-white dark:bg-slate-800 rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow duration-300">
       {project.imageUpload ? (
@@ -65,14 +62,10 @@ const ProjectCard: React.FC<ProjectCardProps> = ({ project }) => {
             </span>
           )}
 
-          {/* Mode Indicator */}
-          {isPortfolioMode ? (
+          {/* Portfolio Mode Indicator */}
+          {isPortfolioMode && (
             <span className="ml-2 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 dark:bg-blue-700 text-blue-800 dark:text-blue-200">
               Portfolio
-            </span>
-          ) : (
-            <span className="ml-2 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 dark:bg-green-700 text-green-800 dark:text-green-200">
-              Marketplace
             </span>
           )}
         </div>
@@ -98,7 +91,7 @@ const ProjectCard: React.FC<ProjectCardProps> = ({ project }) => {
           )}
           
           <Link 
-            to={projectLink}
+            to={`/projects/${project.id}`}
             className="inline-flex items-center text-sm font-medium text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 transition-colors duration-200"
           >
             {isPortfolioMode ? (

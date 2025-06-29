@@ -5,7 +5,6 @@ import Footer from './components/layout/Footer';
 import HomePage from './pages/HomePage';
 import ProjectsPage from './pages/ProjectsPage';
 import ProjectDetailPage from './pages/ProjectDetailPage';
-import MarketplaceProjectPage from './pages/MarketplaceProjectPage';
 import CheckoutPage from './pages/CheckoutPage';
 import ContactPage from './pages/ContactPage';
 import AdminLoginPage from './pages/AdminLoginPage';
@@ -36,7 +35,6 @@ function App() {
                     <Route path="/" element={<HomePage />} />
                     <Route path="/projects" element={<ProjectsPage />} />
                     <Route path="/projects/:id" element={<ProjectDetailPage />} />
-                    <Route path="/marketplace/:id" element={<MarketplaceProjectPage />} />
                     <Route path="/checkout/:id" element={<CheckoutPage />} />
                     <Route path="/contact" element={<ContactPage />} />
                     <Route path="/admin/login" element={<AdminLoginPage />} />

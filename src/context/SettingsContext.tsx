@@ -20,7 +20,6 @@ interface SettingsContextType {
   error: string | null;
   isPortfolioMode: boolean; // Computed property for easy access
   isMarketplaceMode: boolean; // Computed property for easy access
-  refreshSettings: () => Promise<void>; // Add manual refresh function
 }
 
 const defaultSettings: MarketplaceSettings = {
@@ -31,7 +30,7 @@ const defaultSettings: MarketplaceSettings = {
   documentAutoGeneration: true,
   showPricesOnProjects: true,
   enableCheckoutProcess: true,
-  marketplaceMode: true, // Default to marketplace mode to match your current setup
+  marketplaceMode: true, // Default to marketplace mode
   lastUpdated: new Date().toISOString()
 };
 
@@ -64,9 +63,7 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       const localSettings = localStorage.getItem('marketplace_settings');
       if (localSettings) {
         const parsed = JSON.parse(localSettings);
-        const mergedSettings = { ...defaultSettings, ...parsed };
-        setSettings(mergedSettings);
-        console.log('🔄 Loaded settings from localStorage:', mergedSettings);
+        setSettings({ ...defaultSettings, ...parsed });
       }
 
       // Then try to load from Supabase (if user is authenticated)
@@ -76,11 +73,9 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
           const { data } = await supabase.auth.getUser();
           if (data.user?.user_metadata?.marketplace_settings) {
             const cloudSettings = data.user.user_metadata.marketplace_settings;
-            const finalSettings = { ...defaultSettings, ...cloudSettings };
-            setSettings(finalSettings);
+            setSettings({ ...defaultSettings, ...cloudSettings });
             // Update localStorage with cloud settings
-            localStorage.setItem('marketplace_settings', JSON.stringify(finalSettings));
-            console.log('☁️ Loaded settings from Supabase:', finalSettings);
+            localStorage.setItem('marketplace_settings', JSON.stringify(cloudSettings));
           }
         }
       } catch (cloudError) {
@@ -95,11 +90,6 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     }
   };
 
-  const refreshSettings = async () => {
-    console.log('🔄 Manually refreshing settings...');
-    await loadSettings();
-  };
-
   const updateSettings = async (newSettings: Partial<MarketplaceSettings>) => {
     try {
       setError(null);
@@ -109,14 +99,11 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         lastUpdated: new Date().toISOString()
       };
 
-      console.log('💾 Updating settings:', updatedSettings);
-
       // Update local state immediately for real-time effect
       setSettings(updatedSettings);
 
-      // Save to localStorage immediately
+      // Save to localStorage
       localStorage.setItem('marketplace_settings', JSON.stringify(updatedSettings));
-      console.log('✅ Settings saved to localStorage');
 
       // Try to save to Supabase (if authenticated)
       try {
@@ -127,14 +114,10 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
               marketplace_settings: updatedSettings
             }
           });
-          console.log('☁️ Settings saved to Supabase');
         }
       } catch (cloudError) {
         console.log('Could not save to cloud, settings saved locally');
       }
-
-      // Force a small delay to ensure state propagation
-      await new Promise(resolve => setTimeout(resolve, 100));
 
     } catch (error) {
       console.error('Error updating settings:', error);
@@ -147,25 +130,13 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   const isPortfolioMode = !settings.marketplaceMode;
   const isMarketplaceMode = settings.marketplaceMode;
 
-  // Debug logging
-  useEffect(() => {
-    console.log('🎯 Settings Context State:', {
-      marketplaceMode: settings.marketplaceMode,
-      isPortfolioMode,
-      isMarketplaceMode,
-      enableCheckoutProcess: settings.enableCheckoutProcess,
-      showPricesOnProjects: settings.showPricesOnProjects
-    });
-  }, [settings, isPortfolioMode, isMarketplaceMode]);
-
   const value = {
     settings,
     updateSettings,
     loading,
     error,
     isPortfolioMode,
-    isMarketplaceMode,
-    refreshSettings
+    isMarketplaceMode
   };
 
   return (
