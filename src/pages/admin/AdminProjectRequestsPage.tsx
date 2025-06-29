@@ -23,7 +23,9 @@ import {
   Edit,
   Save,
   X,
-  Download
+  Download,
+  ChevronDown,
+  ChevronUp
 } from 'lucide-react';
 import AdminLayout from '../../components/admin/AdminLayout';
 import { useProjects } from '../../context/ProjectContext';
@@ -54,6 +56,9 @@ const AdminProjectRequestsPage = () => {
   const [adminNotes, setAdminNotes] = useState('');
   const [selectedRequests, setSelectedRequests] = useState<string[]>([]);
 
+  // Sorting state
+  const [sortConfig, setSortConfig] = useState<{ key: string; direction: 'ascending' | 'descending' } | null>(null);
+
   // Project conversion form state
   const [projectFormData, setProjectFormData] = useState<Omit<Project, 'id'>>({
     title: '',
@@ -81,6 +86,62 @@ const AdminProjectRequestsPage = () => {
     
     return matchesSearch && matchesStatus && matchesPriority;
   });
+
+  // Sorting functionality
+  const requestSort = (key: string) => {
+    let direction: 'ascending' | 'descending' = 'ascending';
+    if (sortConfig && sortConfig.key === key && sortConfig.direction === 'ascending') {
+      direction = 'descending';
+    }
+    setSortConfig({ key, direction });
+  };
+
+  const getSortedRequests = () => {
+    if (!sortConfig) return filteredRequests;
+
+    return [...filteredRequests].sort((a, b) => {
+      // Handle different data types appropriately
+      let aValue: any, bValue: any;
+      
+      // Special handling for dates
+      if (sortConfig.key === 'date') {
+        aValue = new Date(a.created_at || 0).getTime();
+        bValue = new Date(b.created_at || 0).getTime();
+      } 
+      // Special handling for customer name
+      else if (sortConfig.key === 'customer') {
+        aValue = a.customer_name?.toLowerCase() || '';
+        bValue = b.customer_name?.toLowerCase() || '';
+      } 
+      // Special handling for project title
+      else if (sortConfig.key === 'project') {
+        aValue = a.project_title?.toLowerCase() || '';
+        bValue = b.project_title?.toLowerCase() || '';
+      }
+      // Special handling for priority
+      else if (sortConfig.key === 'priority') {
+        const priorityOrder = ['low', 'medium', 'high', 'urgent'];
+        aValue = priorityOrder.indexOf(a.priority || '');
+        bValue = priorityOrder.indexOf(b.priority || '');
+      }
+      // Special handling for status
+      else if (sortConfig.key === 'status') {
+        const statusOrder = ['pending', 'reviewing', 'approved', 'rejected', 'converted'];
+        aValue = statusOrder.indexOf(a.status || '');
+        bValue = statusOrder.indexOf(b.status || '');
+      }
+
+      if (aValue < bValue) {
+        return sortConfig.direction === 'ascending' ? -1 : 1;
+      }
+      if (aValue > bValue) {
+        return sortConfig.direction === 'ascending' ? 1 : -1;
+      }
+      return 0;
+    });
+  };
+
+  const sortedRequests = getSortedRequests();
 
   // Calculate statistics
   const stats = {
@@ -522,7 +583,7 @@ const AdminProjectRequestsPage = () => {
 
         {/* Requests Table */}
         <div className="bg-white dark:bg-slate-800 rounded-lg shadow-sm overflow-hidden mb-8">
-          {filteredRequests.length === 0 ? (
+          {sortedRequests.length === 0 ? (
             <div className="p-6 text-center">
               <h3 className="text-lg font-medium text-slate-900 dark:text-slate-200 mb-1">No project requests found</h3>
               <p className="text-slate-500 dark:text-slate-400">
@@ -546,20 +607,65 @@ const AdminProjectRequestsPage = () => {
                         />
                       </div>
                     </th>
-                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">
-                      Customer
+                    <th 
+                      scope="col" 
+                      className="px-6 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-700"
+                      onClick={() => requestSort('customer')}
+                    >
+                      <div className="flex items-center">
+                        Customer
+                        {sortConfig?.key === 'customer' && (
+                          <ChevronDown className={`ml-1 h-4 w-4 transition-transform ${sortConfig.direction === 'descending' ? 'rotate-180' : ''}`} />
+                        )}
+                      </div>
                     </th>
-                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">
-                      Project
+                    <th 
+                      scope="col" 
+                      className="px-6 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-700"
+                      onClick={() => requestSort('project')}
+                    >
+                      <div className="flex items-center">
+                        Project
+                        {sortConfig?.key === 'project' && (
+                          <ChevronDown className={`ml-1 h-4 w-4 transition-transform ${sortConfig.direction === 'descending' ? 'rotate-180' : ''}`} />
+                        )}
+                      </div>
                     </th>
-                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">
-                      Priority
+                    <th 
+                      scope="col" 
+                      className="px-6 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-700"
+                      onClick={() => requestSort('priority')}
+                    >
+                      <div className="flex items-center">
+                        Priority
+                        {sortConfig?.key === 'priority' && (
+                          <ChevronDown className={`ml-1 h-4 w-4 transition-transform ${sortConfig.direction === 'descending' ? 'rotate-180' : ''}`} />
+                        )}
+                      </div>
                     </th>
-                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">
-                      Status
+                    <th 
+                      scope="col" 
+                      className="px-6 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-700"
+                      onClick={() => requestSort('status')}
+                    >
+                      <div className="flex items-center">
+                        Status
+                        {sortConfig?.key === 'status' && (
+                          <ChevronDown className={`ml-1 h-4 w-4 transition-transform ${sortConfig.direction === 'descending' ? 'rotate-180' : ''}`} />
+                        )}
+                      </div>
                     </th>
-                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">
-                      Date
+                    <th 
+                      scope="col" 
+                      className="px-6 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-700"
+                      onClick={() => requestSort('date')}
+                    >
+                      <div className="flex items-center">
+                        Date
+                        {sortConfig?.key === 'date' && (
+                          <ChevronDown className={`ml-1 h-4 w-4 transition-transform ${sortConfig.direction === 'descending' ? 'rotate-180' : ''}`} />
+                        )}
+                      </div>
                     </th>
                     <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">
                       Actions
@@ -567,7 +673,7 @@ const AdminProjectRequestsPage = () => {
                   </tr>
                 </thead>
                 <tbody className="bg-white dark:bg-slate-800 divide-y divide-slate-200 dark:divide-slate-700">
-                  {filteredRequests.map((request) => {
+                  {sortedRequests.map((request) => {
                     const statusBadge = getStatusBadge(request.status);
                     const priorityBadge = getPriorityBadge(request.priority);
                     const StatusIcon = statusBadge.icon;
