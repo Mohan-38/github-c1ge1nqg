@@ -66,3 +66,236 @@ body {
   -webkit-box-orient: vertical;
   overflow: hidden;
 }
+
+/* Color Palette System */
+:root {
+  /* Default color variables */
+  --color-primary: #3b82f6;
+  --color-primary-dark: #1d4ed8;
+  --color-secondary: #1e40af;
+  --color-accent: #1e3a8a;
+  --bg-primary: #ffffff;
+  --bg-secondary: #f8fafc;
+  --text-primary: #1f2937;
+  --text-secondary: #6b7280;
+}
+
+/* Apply color palette to entire website */
+body {
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+/* Update primary buttons and links */
+.bg-blue-600, .bg-blue-500 {
+  background-color: var(--color-primary) !important;
+}
+
+.bg-blue-700 {
+  background-color: var(--color-primary-dark) !important;
+}
+
+.text-blue-600, .text-blue-500 {
+  color: var(--color-primary) !important;
+}
+
+.text-blue-700 {
+  color: var(--color-primary-dark) !important;
+}
+
+.border-blue-500, .border-blue-600 {
+  border-color: var(--color-primary) !important;
+}
+
+.ring-blue-500 {
+  --tw-ring-color: var(--color-primary) !important;
+}
+
+/* Update hover states */
+.hover\:bg-blue-700:hover {
+  background-color: var(--color-primary-dark) !important;
+}
+
+.hover\:text-blue-800:hover {
+  color: var(--color-secondary) !important;
+}
+
+/* Update focus states */
+.focus\:ring-blue-500:focus {
+  --tw-ring-color: var(--color-primary) !important;
+}
+
+.focus\:border-blue-500:focus {
+  border-color: var(--color-primary) !important;
+}
+
+/* Color palette specific styles */
+.palette-ocean-blue {
+  --tw-bg-opacity: 1;
+  background-color: var(--bg-primary);
+}
+
+.palette-ocean-blue .bg-white {
+  background-color: var(--bg-primary) !important;
+}
+
+.palette-ocean-blue .bg-slate-50 {
+  background-color: var(--bg-secondary) !important;
+}
+
+.palette-sunset-orange {
+  --tw-bg-opacity: 1;
+  background-color: var(--bg-primary);
+}
+
+.palette-sunset-orange .bg-white {
+  background-color: var(--bg-primary) !important;
+}
+
+.palette-sunset-orange .bg-slate-50 {
+  background-color: var(--bg-secondary) !important;
+}
+
+.palette-forest-green {
+  --tw-bg-opacity: 1;
+  background-color: var(--bg-primary);
+}
+
+.palette-forest-green .bg-white {
+  background-color: var(--bg-primary) !important;
+}
+
+.palette-forest-green .bg-slate-50 {
+  background-color: var(--bg-secondary) !important;
+}
+
+.palette-royal-purple {
+  --tw-bg-opacity: 1;
+  background-color: var(--bg-primary);
+}
+
+.palette-royal-purple .bg-white {
+  background-color: var(--bg-primary) !important;
+}
+
+.palette-royal-purple .bg-slate-50 {
+  background-color: var(--bg-secondary) !important;
+}
+
+.palette-rose-pink {
+  --tw-bg-opacity: 1;
+  background-color: var(--bg-primary);
+}
+
+.palette-rose-pink .bg-white {
+  background-color: var(--bg-primary) !important;
+}
+
+.palette-rose-pink .bg-slate-50 {
+  background-color: var(--bg-secondary) !important;
+}
+
+.palette-teal-cyan {
+  --tw-bg-opacity: 1;
+  background-color: var(--bg-primary);
+}
+
+.palette-teal-cyan .bg-white {
+  background-color: var(--bg-primary) !important;
+}
+
+.palette-teal-cyan .bg-slate-50 {
+  background-color: var(--bg-secondary) !important;
+}
+
+.palette-golden-amber {
+  --tw-bg-opacity: 1;
+  background-color: var(--bg-primary);
+}
+
+.palette-golden-amber .bg-white {
+  background-color: var(--bg-primary) !important;
+}
+
+.palette-golden-amber .bg-slate-50 {
+  background-color: var(--bg-secondary) !important;
+}
+
+.palette-deep-indigo {
+  --tw-bg-opacity: 1;
+  background-color: var(--bg-primary);
+}
+
+.palette-deep-indigo .bg-white {
+  background-color: var(--bg-primary) !important;
+}
+
+.palette-deep-indigo .bg-slate-50 {
+  background-color: var(--bg-secondary) !important;
+}
+
+/* Ensure text remains readable */
+.palette-ocean-blue .text-slate-900 {
+  color: var(--text-primary) !important;
+}
+
+.palette-ocean-blue .text-slate-600 {
+  color: var(--text-secondary) !important;
+}
+
+.palette-sunset-orange .text-slate-900 {
+  color: var(--text-primary) !important;
+}
+
+.palette-sunset-orange .text-slate-600 {
+  color: var(--text-secondary) !important;
+}
+
+.palette-forest-green .text-slate-900 {
+  color: var(--text-primary) !important;
+}
+
+.palette-forest-green .text-slate-600 {
+  color: var(--text-secondary) !important;
+}
+
+.palette-royal-purple .text-slate-900 {
+  color: var(--text-primary) !important;
+}
+
+.palette-royal-purple .text-slate-600 {
+  color: var(--text-secondary) !important;
+}
+
+.palette-rose-pink .text-slate-900 {
+  color: var(--text-primary) !important;
+}
+
+.palette-rose-pink .text-slate-600 {
+  color: var(--text-secondary) !important;
+}
+
+.palette-teal-cyan .text-slate-900 {
+  color: var(--text-primary) !important;
+}
+
+.palette-teal-cyan .text-slate-600 {
+  color: var(--text-secondary) !important;
+}
+
+.palette-golden-amber .text-slate-900 {
+  color: var(--text-primary) !important;
+}
+
+.palette-golden-amber .text-slate-600 {
+  color: var(--text-secondary) !important;
+}
+
+.palette-deep-indigo .text-slate-900 {
+  color: var(--text-primary) !important;
+}
+
+.palette-deep-indigo .text-slate-600 {
+  color: var(--text-secondary) !important;
+}
